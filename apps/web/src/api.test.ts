@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createRun } from './api.js';
-import { fetchCases, confirmCases } from './api.js';
+import { createRun, fetchCases, confirmCases } from './api.js';
 
 afterEach(() => vi.restoreAllMocks());
 

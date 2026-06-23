@@ -13,17 +13,25 @@ export function CaseReview({ runId, onConfirmed }: { runId: string; onConfirmed:
   }, [runId]);
 
   async function toggle(c: TestCase) {
-    const next = c.status === 'rejected' ? 'draft' : 'rejected';
-    const updated = await patchCase(runId, c.id, { status: next });
-    setCases((prev) => prev.map((x) => (x.id === c.id ? updated : x)));
+    try {
+      const next = c.status === 'rejected' ? 'draft' : 'rejected';
+      const updated = await patchCase(runId, c.id, { status: next });
+      setCases((prev) => prev.map((x) => (x.id === c.id ? updated : x)));
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   async function addFlow() {
     if (!title || !target) return;
-    const created = await addManualCase(runId, title, [{ action: 'click', target }]);
-    setCases((prev) => [...prev, created]);
-    setTitle('');
-    setTarget('');
+    try {
+      const created = await addManualCase(runId, title, [{ action: 'click', target }]);
+      setCases((prev) => [...prev, created]);
+      setTitle('');
+      setTarget('');
+    } catch (e) {
+      setError(String(e));
+    }
   }
 
   async function confirm() {

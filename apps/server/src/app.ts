@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { existsSync, readFileSync } from 'node:fs';
 import { ProjectInputSchema, TestCaseSchema, FlowStepSchema } from '@ringq/shared';
 import type { Store } from './store.js';
 import type { JobQueue } from './queue.js';
@@ -73,6 +74,22 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
     });
     return reply.code(201).send(created);
   });
+
+  app.get<{ Params: { id: string } }>('/api/runs/:id/captures', async (req, reply) => {
+    if (!store.getRun(req.params.id)) return reply.code(404).send({ error: 'not found' });
+    return store.listCaptures(req.params.id);
+  });
+
+  app.get<{ Params: { id: string; caseId: string } }>(
+    '/api/runs/:id/captures/:caseId/screenshot',
+    async (req, reply) => {
+      const cap = store.listCaptures(req.params.id).find((c) => c.caseId === req.params.caseId);
+      if (!cap?.screenshotPath || !existsSync(cap.screenshotPath)) {
+        return reply.code(404).send({ error: 'screenshot not found' });
+      }
+      return reply.type('image/png').send(readFileSync(cap.screenshotPath));
+    },
+  );
 
   app.post<{ Params: { id: string } }>('/api/runs/:id/confirm', async (req, reply) => {
     const run = store.getRun(req.params.id);

@@ -166,3 +166,35 @@ describe('POST /api/runs/:id/confirm', () => {
     expect(res.statusCode).toBe(409);
   });
 });
+
+import type { RunCapture } from '@ringq/shared';
+
+describe('GET /api/runs/:id/captures', () => {
+  it('run의 캡처를 반환한다', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const caps: RunCapture[] = [
+      { caseId: 'tc_1', runId: run.id, type: 'ui', url: 'https://e.com', texts: ['x'], elements: [] },
+    ];
+    store.saveCaptures(run.id, caps);
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/captures` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toHaveLength(1);
+  });
+
+  it('없는 run이면 404', async () => {
+    const { app } = setup();
+    const res = await app.inject({ method: 'GET', url: '/api/runs/nope/captures' });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('GET screenshot', () => {
+  it('screenshotPath 없으면 404', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    store.saveCaptures(run.id, [{ caseId: 'tc_1', runId: run.id, type: 'ui', url: 'https://e.com', texts: [], elements: [] }]);
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/captures/tc_1/screenshot` });
+    expect(res.statusCode).toBe(404);
+  });
+});

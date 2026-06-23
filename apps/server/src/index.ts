@@ -3,11 +3,17 @@ import { mkdirSync } from 'node:fs';
 import { buildApp } from './app.js';
 import { createStore } from './store.js';
 import { createQueue } from './queue.js';
-import { createSkeletonPipeline } from './pipeline.js';
+import { createPipeline } from './pipeline.js';
+import { createFigmaClient } from './figma/client.js';
+import { createCaseGenerator } from './cases/generator.js';
+import { createAnthropicLLM } from './llm/anthropic.js';
 
 mkdirSync('data', { recursive: true });
 const store = createStore('data/ringq.db');
-const queue = createQueue(createSkeletonPipeline(store, { delayMs: 300 }));
+const figma = createFigmaClient({ token: process.env.FIGMA_TOKEN ?? '' });
+const llm = createAnthropicLLM({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' });
+const generator = createCaseGenerator(llm);
+const queue = createQueue(createPipeline({ store, figma, generator }, { delayMs: 300 }));
 const app = buildApp({ store, queue });
 
 const port = Number(process.env.PORT ?? 4000);

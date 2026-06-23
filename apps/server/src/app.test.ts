@@ -2,11 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { buildApp } from './app.js';
 import { createStore } from './store.js';
 import { createQueue } from './queue.js';
-import { createSkeletonPipeline } from './pipeline.js';
+import { createPipeline } from './pipeline.js';
+import { createCaseGenerator } from './cases/generator.js';
+import { createFakeLLM } from './llm/fake.js';
+import type { FigmaClient, FigmaExtract } from './figma/client.js';
+
+const fakeExtract: FigmaExtract = {
+  fileKey: 'A',
+  frames: [{ nodeId: '1:2', name: '로그인', texts: ['로그인'], elements: [], colors: [] }],
+  transitions: [],
+};
+const fakeFigma: FigmaClient = { fetchExtract: async () => fakeExtract };
 
 function setup() {
   const store = createStore(':memory:');
-  const queue = createQueue(createSkeletonPipeline(store, { delayMs: 0 }));
+  const generator = createCaseGenerator(createFakeLLM([]));
+  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator }, { delayMs: 0 }));
   const app = buildApp({ store, queue });
   return { store, queue, app };
 }

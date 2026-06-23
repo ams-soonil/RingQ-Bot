@@ -63,3 +63,87 @@ describe('GET /api/runs/:id', () => {
     expect(res.json().id).toBe(run.id);
   });
 });
+
+import type { TestCase } from '@ringq/shared';
+
+function seedAwaitingReview() {
+  const { app, store, queue } = setup();
+  const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+  store.updateRun(run.id, { phase: 'awaiting-review' });
+  const c: TestCase = {
+    id: 'tc_x_0', runId: run.id, type: 'ui', source: 'figma', status: 'draft',
+    title: '로그인 UI', figmaNodeId: '1:2',
+    uiExpectation: { texts: ['로그인'], elements: [], colors: [] },
+  };
+  store.saveCases(run.id, [c]);
+  return { app, store, queue, run, c };
+}
+
+describe('GET /api/runs/:id/cases', () => {
+  it('run의 케이스를 반환한다', async () => {
+    const { app, run } = seedAwaitingReview();
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/cases` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toHaveLength(1);
+  });
+});
+
+describe('PATCH /api/runs/:id/cases/:caseId', () => {
+  it('케이스 title/status를 갱신한다', async () => {
+    const { app, run, c } = seedAwaitingReview();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/runs/${run.id}/cases/${c.id}`,
+      payload: { title: '수정됨', status: 'rejected' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().title).toBe('수정됨');
+  });
+
+  it('없는 케이스는 404', async () => {
+    const { app, run } = seedAwaitingReview();
+    const res = await app.inject({ method: 'PATCH', url: `/api/runs/${run.id}/cases/nope`, payload: { title: 'x' } });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('POST /api/runs/:id/cases (수동 추가)', () => {
+  it('flow 케이스를 추가한다', async () => {
+    const { app, run } = seedAwaitingReview();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/runs/${run.id}/cases`,
+      payload: { title: '수동 플로우', steps: [{ action: 'click', target: '로그인 버튼' }] },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().source).toBe('manual');
+    expect(res.json().type).toBe('flow');
+  });
+
+  it('잘못된 step은 400', async () => {
+    const { app, run } = seedAwaitingReview();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/runs/${run.id}/cases`,
+      payload: { title: 'x', steps: [{ action: 'teleport', target: 'y' }] },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('POST /api/runs/:id/confirm', () => {
+  it('awaiting-review면 확정하고 cases-confirmed로 큐에 넣는다', async () => {
+    const { app, store, run } = seedAwaitingReview();
+    const res = await app.inject({ method: 'POST', url: `/api/runs/${run.id}/confirm` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().phase).toBe('cases-confirmed');
+    expect(store.listCases(run.id)[0].status).toBe('confirmed');
+  });
+
+  it('awaiting-review가 아니면 409', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const res = await app.inject({ method: 'POST', url: `/api/runs/${run.id}/confirm` });
+    expect(res.statusCode).toBe(409);
+  });
+});

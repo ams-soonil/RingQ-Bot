@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createStore } from './store.js';
+import type { TestCase } from '@ringq/shared';
 
 const input = { figmaLinks: ['https://figma.com/file/abc'], siteUrl: 'https://example.com' };
 
@@ -40,5 +41,62 @@ describe('store', () => {
     const ids = store.listRuns().map((r) => r.id);
     expect(ids[0]).toBe(b.id);
     expect(ids[1]).toBe(a.id);
+  });
+});
+
+const uiCase: TestCase = {
+  id: 'tc_1', runId: 'r1', type: 'ui', source: 'figma', status: 'draft',
+  title: '로그인 UI', figmaNodeId: '1:2',
+  uiExpectation: { texts: ['로그인'], elements: ['로그인 버튼'], colors: ['#ff0000'] },
+};
+const flowCase: TestCase = {
+  id: 'tc_2', runId: 'r1', type: 'flow', source: 'figma', status: 'draft',
+  title: '로그인 플로우', steps: [{ action: 'click', target: '로그인 버튼' }],
+};
+
+describe('store test_cases', () => {
+  it('saveCases/listCases 라운드트립', () => {
+    const store = createStore(':memory:');
+    store.saveCases('r1', [uiCase, flowCase]);
+    const got = store.listCases('r1');
+    expect(got).toHaveLength(2);
+    expect(got[0].uiExpectation?.texts).toEqual(['로그인']);
+    expect(got[1].steps?.[0].target).toBe('로그인 버튼');
+  });
+
+  it('saveCases는 기존 케이스를 교체한다', () => {
+    const store = createStore(':memory:');
+    store.saveCases('r1', [uiCase, flowCase]);
+    store.saveCases('r1', [uiCase]);
+    expect(store.listCases('r1')).toHaveLength(1);
+  });
+
+  it('updateCase로 title/status를 갱신한다', () => {
+    const store = createStore(':memory:');
+    store.saveCases('r1', [uiCase]);
+    const u = store.updateCase('tc_1', { title: '수정됨', status: 'rejected' });
+    expect(u.title).toBe('수정됨');
+    expect(store.listCases('r1')[0].status).toBe('rejected');
+  });
+
+  it('없는 case update는 throw', () => {
+    const store = createStore(':memory:');
+    expect(() => store.updateCase('nope', { title: 'x' })).toThrow(/case not found/);
+  });
+
+  it('addCase로 수동 케이스를 추가한다', () => {
+    const store = createStore(':memory:');
+    store.saveCases('r1', [uiCase]);
+    store.addCase({ ...flowCase, id: 'tc_manual', source: 'manual' });
+    expect(store.listCases('r1')).toHaveLength(2);
+  });
+
+  it('confirmCases는 draft만 confirmed로 바꾼다', () => {
+    const store = createStore(':memory:');
+    store.saveCases('r1', [uiCase, { ...flowCase, status: 'rejected' }]);
+    store.confirmCases('r1');
+    const got = store.listCases('r1');
+    expect(got.find((c) => c.id === 'tc_1')?.status).toBe('confirmed');
+    expect(got.find((c) => c.id === 'tc_2')?.status).toBe('rejected');
   });
 });

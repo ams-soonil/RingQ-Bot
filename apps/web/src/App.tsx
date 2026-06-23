@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ProgressEvent, Run } from '@ringq/shared';
 import { createRun } from './api.js';
 
@@ -9,8 +9,11 @@ export function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const esRef = useRef<EventSource | null>(null);
 
   async function onRun() {
+    esRef.current?.close();
+    esRef.current = null;
     setError(null);
     setEvents([]);
     try {
@@ -21,12 +24,19 @@ export function App() {
       });
       setRun(created);
       const es = new EventSource(`/api/runs/${created.id}/events`);
+      esRef.current = es;
       es.addEventListener('progress', (e) => {
         const ev = JSON.parse((e as MessageEvent).data) as ProgressEvent;
         setEvents((prev) => [...prev, ev]);
-        if (ev.phase === 'done' || ev.phase === 'failed') es.close();
+        if (ev.phase === 'done' || ev.phase === 'failed') {
+          es.close();
+          esRef.current = null;
+        }
       });
-      es.onerror = () => es.close();
+      es.onerror = () => {
+        es.close();
+        esRef.current = null;
+      };
     } catch (err) {
       setError(err instanceof Error ? err.message : '실행 실패');
     }

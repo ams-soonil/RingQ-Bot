@@ -33,6 +33,7 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
       reply.code(404).send({ error: 'not found' });
       return;
     }
+    reply.hijack();
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

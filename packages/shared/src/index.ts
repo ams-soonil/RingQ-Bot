@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const RunPhaseSchema = z.enum([
   'queued',
   'generating-cases',
+  'awaiting-review',
+  'cases-confirmed',
   'running',
   'comparing',
   'reporting',
@@ -39,3 +41,40 @@ export const ProgressEventSchema = z.object({
   at: z.string(),
 });
 export type ProgressEvent = z.infer<typeof ProgressEventSchema>;
+
+export const TestCaseTypeSchema = z.enum(['ui', 'flow']);
+export type TestCaseType = z.infer<typeof TestCaseTypeSchema>;
+
+export const TestCaseSourceSchema = z.enum(['figma', 'manual']);
+export type TestCaseSource = z.infer<typeof TestCaseSourceSchema>;
+
+export const TestCaseStatusSchema = z.enum(['draft', 'confirmed', 'rejected']);
+export type TestCaseStatus = z.infer<typeof TestCaseStatusSchema>;
+
+export const UiExpectationSchema = z.object({
+  texts: z.array(z.string()),
+  elements: z.array(z.string()),
+  colors: z.array(z.string()),
+});
+export type UiExpectation = z.infer<typeof UiExpectationSchema>;
+
+export const FlowStepSchema = z.object({
+  action: z.enum(['navigate', 'click', 'expect']),
+  target: z.string(),
+  note: z.string().optional(),
+});
+export type FlowStep = z.infer<typeof FlowStepSchema>;
+
+export const TestCaseSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  type: TestCaseTypeSchema,
+  source: TestCaseSourceSchema,
+  status: TestCaseStatusSchema,
+  title: z.string(),
+  figmaNodeId: z.string().optional(),
+  uiExpectation: UiExpectationSchema.optional(),
+  steps: z.array(FlowStepSchema).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+});
+export type TestCase = z.infer<typeof TestCaseSchema>;

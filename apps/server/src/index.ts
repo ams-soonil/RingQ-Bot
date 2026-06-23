@@ -5,13 +5,24 @@ import { createStore } from './store.js';
 import { createQueue } from './queue.js';
 import { createPipeline } from './pipeline.js';
 import { createFigmaClient } from './figma/client.js';
-import { createCaseGenerator } from './cases/generator.js';
 import { createAnthropicLLM } from './llm/anthropic.js';
+import { createCaseGenerator } from './cases/generator.js';
+
+const figmaToken = process.env.FIGMA_TOKEN;
+const anthropicKey = process.env.ANTHROPIC_API_KEY;
+if (!figmaToken) {
+  console.error('[ringq] FIGMA_TOKEN 환경변수가 필요합니다 (.env 참고)');
+  process.exit(1);
+}
+if (!anthropicKey) {
+  console.error('[ringq] ANTHROPIC_API_KEY 환경변수가 필요합니다 (.env 참고)');
+  process.exit(1);
+}
 
 mkdirSync('data', { recursive: true });
 const store = createStore('data/ringq.db');
-const figma = createFigmaClient({ token: process.env.FIGMA_TOKEN ?? '' });
-const llm = createAnthropicLLM({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' });
+const figma = createFigmaClient({ token: figmaToken });
+const llm = createAnthropicLLM({ apiKey: anthropicKey });
 const generator = createCaseGenerator(llm);
 const queue = createQueue(createPipeline({ store, figma, generator }, { delayMs: 300 }));
 const app = buildApp({ store, queue });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ProjectInputSchema, ProgressEventSchema, RunPhaseSchema, TestCaseSchema, RunCaptureSchema } from './index.js';
+import { ProjectInputSchema, ProgressEventSchema, RunPhaseSchema, TestCaseSchema, RunCaptureSchema, FindingSchema, SeveritySchema } from './index.js';
 
 describe('ProjectInputSchema', () => {
   it('유효한 입력을 통과시킨다', () => {
@@ -109,5 +109,26 @@ describe('TestCase.routePath', () => {
       title: '로그인 UI', routePath: '/login',
     });
     expect(c.routePath).toBe('/login');
+  });
+});
+
+describe('FindingSchema', () => {
+  it('구조 finding을 검증한다', () => {
+    const f = FindingSchema.parse({
+      id: 'fd_1', runId: 'run_1', caseId: 'tc_1',
+      category: 'missing-text', severity: 'major', message: '"로그인" 텍스트 없음', source: 'structural',
+    });
+    expect(f.severity).toBe('major');
+    expect(f.source).toBe('structural');
+  });
+
+  it('잘못된 severity를 거부한다', () => {
+    expect(() => SeveritySchema.parse('blocker')).toThrow();
+  });
+
+  it('잘못된 source를 거부한다', () => {
+    expect(() =>
+      FindingSchema.parse({ id: 'x', runId: 'r', caseId: 'c', category: 'x', severity: 'minor', message: 'm', source: 'guess' }),
+    ).toThrow();
   });
 });

@@ -92,3 +92,20 @@ export const RunCaptureSchema = z.object({
   error: z.string().optional(),
 });
 export type RunCapture = z.infer<typeof RunCaptureSchema>;
+
+export const SeveritySchema = z.enum(['critical', 'major', 'minor']);
+export type Severity = z.infer<typeof SeveritySchema>;
+
+export const FindingSourceSchema = z.enum(['structural', 'vision']);
+export type FindingSource = z.infer<typeof FindingSourceSchema>;
+
+export const FindingSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  caseId: z.string(),
+  category: z.string(),
+  severity: SeveritySchema,
+  message: z.string(),
+  source: FindingSourceSchema,
+});
+export type Finding = z.infer<typeof FindingSchema>;

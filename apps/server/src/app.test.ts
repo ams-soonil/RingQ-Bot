@@ -105,6 +105,21 @@ describe('PATCH /api/runs/:id/cases/:caseId', () => {
     const res = await app.inject({ method: 'PATCH', url: `/api/runs/${run.id}/cases/nope`, payload: { title: 'x' } });
     expect(res.statusCode).toBe(404);
   });
+
+  it('다른 run에 속한 케이스 id로 PATCH하면 404', async () => {
+    const { app, run } = seedAwaitingReview();
+    // seed a second run with its own case
+    const { store: store2, app: _app2 } = setup();
+    const run2 = store2.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const otherCaseId = `tc_${run2.id}_0`;
+    // patch run's endpoint with a caseId that belongs to run2 (not seeded in run)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/runs/${run.id}/cases/${otherCaseId}`,
+      payload: { title: '다른 run 케이스' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
 });
 
 describe('POST /api/runs/:id/cases (수동 추가)', () => {

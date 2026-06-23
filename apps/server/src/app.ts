@@ -43,13 +43,12 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
   app.patch<{ Params: { id: string; caseId: string } }>(
     '/api/runs/:id/cases/:caseId',
     async (req, reply) => {
+      if (!store.getRun(req.params.id)) return reply.code(404).send({ error: 'not found' });
       const parsed = CasePatchSchema.safeParse(req.body);
       if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
-      try {
-        return store.updateCase(req.params.caseId, parsed.data);
-      } catch {
-        return reply.code(404).send({ error: 'case not found' });
-      }
+      const exists = store.listCases(req.params.id).some((c) => c.id === req.params.caseId);
+      if (!exists) return reply.code(404).send({ error: 'case not found' });
+      return store.updateCase(req.params.caseId, parsed.data);
     },
   );
 

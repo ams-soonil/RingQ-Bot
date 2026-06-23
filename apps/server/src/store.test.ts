@@ -101,7 +101,7 @@ describe('store test_cases', () => {
   });
 });
 
-import type { RunCapture } from '@ringq/shared';
+import type { RunCapture, Finding } from '@ringq/shared';
 
 const cap1: RunCapture = {
   caseId: 'tc_1', runId: 'r1', type: 'ui', url: 'https://e.com',
@@ -129,5 +129,26 @@ describe('store captures', () => {
     store.saveCaptures('r1', [cap1, cap2]);
     store.saveCaptures('r1', [cap1]);
     expect(store.listCaptures('r1')).toHaveLength(1);
+  });
+});
+
+const f1: Finding = { id: 'fd_1', runId: 'r1', caseId: 'tc_1', category: 'missing-text', severity: 'major', message: 'x', source: 'structural' };
+const f2: Finding = { id: 'fd_2', runId: 'r1', caseId: 'tc_1', category: 'layout', severity: 'minor', message: 'y', source: 'vision' };
+
+describe('store findings', () => {
+  it('saveFindings/listFindings 라운드트립', () => {
+    const store = createStore(':memory:');
+    store.saveFindings('r1', [f1, f2]);
+    const got = store.listFindings('r1');
+    expect(got).toHaveLength(2);
+    expect(got[0].severity).toBe('major');
+    expect(got[1].source).toBe('vision');
+  });
+
+  it('saveFindings는 기존을 교체한다', () => {
+    const store = createStore(':memory:');
+    store.saveFindings('r1', [f1, f2]);
+    store.saveFindings('r1', [f1]);
+    expect(store.listFindings('r1')).toHaveLength(1);
   });
 });

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import type { ProjectInput, Run, RunPhase, RunStatus, TestCase, RunCapture } from '@ringq/shared';
+import type { ProjectInput, Run, RunPhase, RunStatus, TestCase, RunCapture, Finding } from '@ringq/shared';
 
 export interface Store {
   createRun(input: ProjectInput): Run;
@@ -13,6 +13,8 @@ export interface Store {
   confirmCases(runId: string): void;
   saveCaptures(runId: string, captures: RunCapture[]): void;
   listCaptures(runId: string): RunCapture[];
+  saveFindings(runId: string, findings: Finding[]): void;
+  listFindings(runId: string): Finding[];
 }
 
 interface CaseRow {
@@ -69,6 +71,28 @@ function rowToCapture(row: CaptureRow): RunCapture {
   };
 }
 
+interface FindingRow {
+  id: string;
+  run_id: string;
+  case_id: string;
+  category: string;
+  severity: string;
+  message: string;
+  source: string;
+}
+
+function rowToFinding(row: FindingRow): Finding {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    caseId: row.case_id,
+    category: row.category,
+    severity: row.severity as Finding['severity'],
+    message: row.message,
+    source: row.source as Finding['source'],
+  };
+}
+
 interface Row {
   id: string;
   site_url: string;
@@ -120,6 +144,19 @@ export function createStore(dbPath: string): Store {
       screenshot_path TEXT,
       flow_ok INTEGER,
       error TEXT
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS findings (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      id TEXT UNIQUE NOT NULL,
+      run_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      category TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      message TEXT NOT NULL,
+      source TEXT NOT NULL
     );
   `);
 
@@ -269,6 +306,32 @@ export function createStore(dbPath: string): Store {
     listCaptures(runId) {
       const rows = db.prepare(`SELECT * FROM captures WHERE run_id = ? ORDER BY seq ASC`).all(runId) as CaptureRow[];
       return rows.map(rowToCapture);
+    },
+    saveFindings(runId, findings) {
+      const del = db.prepare(`DELETE FROM findings WHERE run_id = ?`);
+      const ins = db.prepare(
+        `INSERT INTO findings (id, run_id, case_id, category, severity, message, source)
+         VALUES (@id, @run_id, @case_id, @category, @severity, @message, @source)`,
+      );
+      const tx = db.transaction((rows: Finding[]) => {
+        del.run(runId);
+        for (const f of rows) {
+          ins.run({
+            id: f.id,
+            run_id: runId,
+            case_id: f.caseId,
+            category: f.category,
+            severity: f.severity,
+            message: f.message,
+            source: f.source,
+          });
+        }
+      });
+      tx(findings);
+    },
+    listFindings(runId) {
+      const rows = db.prepare(`SELECT * FROM findings WHERE run_id = ? ORDER BY seq ASC`).all(runId) as FindingRow[];
+      return rows.map(rowToFinding);
     },
   };
 }

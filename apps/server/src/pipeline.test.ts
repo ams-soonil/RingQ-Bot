@@ -8,6 +8,8 @@ import type { ProgressEvent } from '@ringq/shared';
 import type { FigmaExtract, FigmaClient } from './figma/client.js';
 import { createRunner } from './runner/runner.js';
 import { createFakeDriver } from './browser/fake.js';
+import { createComparator } from './compare/comparator.js';
+import { createFakeVision } from './compare/vision-fake.js';
 
 const extract: FigmaExtract = {
   fileKey: 'ABC',
@@ -22,7 +24,8 @@ function makeDeps() {
   const generator = createCaseGenerator(createFakeLLM([]));
   const driver = createFakeDriver({ screen: { texts: ['홈'], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
-  return { store, generator, figma: fakeFigma, runner };
+  const comparator = createComparator({ store, figma: fakeFigma, vision: createFakeVision([]) });
+  return { store, generator, figma: fakeFigma, runner, comparator };
 }
 
 describe('pipeline generate 단계', () => {
@@ -45,11 +48,11 @@ describe('pipeline generate 단계', () => {
 });
 
 describe('pipeline resume 단계', () => {
-  it('cases-confirmed면 runner로 캡처 저장 후 done으로 끝낸다', async () => {
+  it('cases-confirmed면 캡처+비교 후 done, finding 저장', async () => {
     const deps = makeDeps();
     const run = deps.store.createRun(input);
     deps.store.saveCases(run.id, [
-      { id: 'tc_1', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: 'UI', figmaNodeId: '1:2' },
+      { id: 'tc_1', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: 'UI', figmaNodeId: '1:2', uiExpectation: { texts: ['없는텍스트'], elements: [], colors: [] } },
     ]);
     deps.store.updateRun(run.id, { phase: 'cases-confirmed' });
 
@@ -57,6 +60,7 @@ describe('pipeline resume 단계', () => {
 
     expect(deps.store.getRun(run.id)!.phase).toBe('done');
     expect(deps.store.listCaptures(run.id).length).toBe(1);
+    expect(deps.store.listFindings(run.id).length).toBeGreaterThan(0); // 기대 텍스트 누락 → 구조 finding
   });
 });
 

@@ -9,6 +9,8 @@ import { createAnthropicLLM } from './llm/anthropic.js';
 import { createCaseGenerator } from './cases/generator.js';
 import { createRunner } from './runner/runner.js';
 import { createPlaywrightDriver } from './browser/playwright.js';
+import { createComparator } from './compare/comparator.js';
+import { createAnthropicVision } from './compare/vision-anthropic.js';
 
 const figmaToken = process.env.FIGMA_TOKEN;
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -31,7 +33,9 @@ const runner = createRunner(
   { store, driver },
   { creds: { username: process.env.SITE_USERNAME, password: process.env.SITE_PASSWORD } },
 );
-const queue = createQueue(createPipeline({ store, figma, generator, runner }, { delayMs: 300 }));
+const vision = createAnthropicVision({ apiKey: anthropicKey });
+const comparator = createComparator({ store, figma, vision });
+const queue = createQueue(createPipeline({ store, figma, generator, runner, comparator }, { delayMs: 300 }));
 const app = buildApp({ store, queue });
 
 const port = Number(process.env.PORT ?? 4000);

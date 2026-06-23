@@ -12,7 +12,9 @@ pnpm dev               # server :4000 + web :5173 동시 구동
 
 브라우저에서 http://localhost:5173 접속 → Figma 링크 + 사이트 URL 입력 → "QA 실행".
 
-> **현재 상태(Plan 2):** Phase 1(Figma 분석 → 케이스 자동생성 → 검수/확정)이 동작합니다. `.env`에 `FIGMA_TOKEN`과 `ANTHROPIC_API_KEY`가 필요합니다. 실행 → 케이스가 `awaiting-review`에서 생성되면 대시보드에서 검수·수정·추가 후 "확정하고 계속"을 누르면 나머지 Phase(running→comparing→reporting, 아직 스텁)가 진행됩니다. 실제 Playwright 실행/비교는 Plan 3~ 에서 구현됩니다.
+> **현재 상태(Plan 3):** Phase 1(Figma→케이스→검수/확정) + Phase 2(확정 후 실제 Playwright 실행)이 동작합니다. 확정하면 runner가 사이트에 접속(`SITE_USERNAME`/`SITE_PASSWORD`가 있으면 휴리스틱 로그인, 없으면 스킵)해 케이스별로 화면을 캡처(스크린샷 + DOM 텍스트/요소)하고, 대시보드의 "캡처 결과"에서 스크린샷과 추출 내용을 봅니다. 비교(comparing)/리포트(reporting)는 아직 스텁이며 Plan 4~5에서 구현됩니다.
+>
+> 최초 1회 브라우저 설치 필요: `pnpm --filter @ringq/server exec playwright install chromium`
 
 ## 테스트
 

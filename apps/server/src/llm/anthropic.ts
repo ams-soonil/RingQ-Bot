@@ -1,6 +1,22 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import type { FigmaExtract } from '../figma/client.js';
 import type { CaseLLM, LlmCaseDraft } from './types.js';
+
+const LlmOutputSchema = z.object({
+  cases: z.array(z.object({
+    type: z.enum(['ui', 'flow']),
+    title: z.string(),
+    figmaNodeId: z.string().optional(),
+    texts: z.array(z.string()).optional(),
+    elements: z.array(z.string()).optional(),
+    steps: z.array(z.object({
+      action: z.string(),
+      target: z.string(),
+      note: z.string().optional(),
+    })).optional(),
+  })),
+});
 
 const SYSTEM = `당신은 QA 엔지니어입니다. 주어진 Figma 화면 데이터로 테스트 케이스 초안을 만듭니다.
 - 각 프레임마다 'ui' 케이스를 1개 만들어 화면에 보여야 할 텍스트/요소를 적습니다.
@@ -62,7 +78,11 @@ export function createAnthropicLLM(opts: { apiKey: string; model?: string }): Ca
       if (!block || block.type !== 'tool_use') {
         throw new Error('LLM이 emit_cases 툴을 호출하지 않음');
       }
-      return (block.input as { cases: LlmCaseDraft[] }).cases ?? [];
+      const parsed = LlmOutputSchema.safeParse(block.input);
+      if (!parsed.success) {
+        throw new Error(`LLM 출력 형식이 올바르지 않음: ${parsed.error.message}`);
+      }
+      return parsed.data.cases;
     },
   };
 }

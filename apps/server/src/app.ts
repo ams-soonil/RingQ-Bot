@@ -61,9 +61,9 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
     if (!store.getRun(req.params.id)) return reply.code(404).send({ error: 'not found' });
     const parsed = ManualCaseSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
-    const n = store.listCases(req.params.id).length;
+    const rand = Math.random().toString(36).slice(2, 8);
     const created = store.addCase({
-      id: `tc_${req.params.id}_manual_${n}`,
+      id: `tc_${req.params.id}_manual_${rand}`,
       runId: req.params.id,
       type: 'flow',
       source: 'manual',

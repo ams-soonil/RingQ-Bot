@@ -27,7 +27,7 @@ describe('parseFigmaUrl', () => {
 
 describe('FigmaClient.fetchExtract', () => {
   it('노드 트리와 이미지를 받아 프레임/전환을 추출한다', async () => {
-    const fetchImpl = vi.fn(async (url: string) => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes('/v1/files/')) {
         return { ok: true, status: 200, json: async () => nodesSample } as Response;
       }
@@ -58,7 +58,7 @@ describe('FigmaClient.fetchExtract', () => {
   });
 
   it('figma API 오류 시 throw한다', async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: false, status: 403, text: async () => 'forbidden' }) as Response);
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => ({ ok: false, status: 403, text: async () => 'forbidden' }) as Response);
     const client = createFigmaClient({ token: 't', fetchImpl: fetchImpl as unknown as typeof fetch });
     await expect(
       client.fetchExtract('https://www.figma.com/file/ABC/My?node-id=1-2'),

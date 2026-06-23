@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createRun, fetchCases, confirmCases, fetchCaptures } from './api.js';
+import { createRun, fetchCases, confirmCases, fetchCaptures, fetchFindings } from './api.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -72,5 +72,21 @@ describe('fetchCaptures', () => {
   it('서버 실패 시 throw', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'x' }) }));
     await expect(fetchCaptures('run_1')).rejects.toThrow();
+  });
+});
+
+describe('fetchFindings', () => {
+  it('GET /api/runs/:id/findings 결과를 반환한다', async () => {
+    const fs = [{ id: 'fd_1', caseId: 'tc_1', category: 'missing-text', severity: 'major', message: 'x', source: 'structural' }];
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => fs });
+    vi.stubGlobal('fetch', fetchMock);
+    const got = await fetchFindings('run_1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/runs/run_1/findings');
+    expect(got).toHaveLength(1);
+  });
+
+  it('서버 실패 시 throw', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'x' }) }));
+    await expect(fetchFindings('run_1')).rejects.toThrow();
   });
 });

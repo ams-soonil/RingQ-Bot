@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import type { ProjectInput, Run, RunPhase, RunStatus, TestCase, RunCapture, Finding } from '@ringq/shared';
+import type { ProjectInput, Run, RunPhase, RunStatus, TestCase, RunCapture, Finding, Report } from '@ringq/shared';
 
 export interface Store {
   createRun(input: ProjectInput): Run;
@@ -15,6 +15,8 @@ export interface Store {
   listCaptures(runId: string): RunCapture[];
   saveFindings(runId: string, findings: Finding[]): void;
   listFindings(runId: string): Finding[];
+  saveReport(report: Report): void;
+  getReport(runId: string): Report | undefined;
 }
 
 interface CaseRow {
@@ -93,6 +95,30 @@ function rowToFinding(row: FindingRow): Finding {
   };
 }
 
+interface ReportRow {
+  run_id: string;
+  total: number;
+  critical: number;
+  major: number;
+  minor: number;
+  verdict: string;
+  generated_at: string;
+  suggestion: string | null;
+}
+
+function rowToReport(row: ReportRow): Report {
+  return {
+    runId: row.run_id,
+    total: row.total,
+    critical: row.critical,
+    major: row.major,
+    minor: row.minor,
+    verdict: row.verdict as Report['verdict'],
+    generatedAt: row.generated_at,
+    suggestion: row.suggestion ?? undefined,
+  };
+}
+
 interface Row {
   id: string;
   site_url: string;
@@ -157,6 +183,19 @@ export function createStore(dbPath: string): Store {
       severity TEXT NOT NULL,
       message TEXT NOT NULL,
       source TEXT NOT NULL
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reports (
+      run_id TEXT PRIMARY KEY,
+      total INTEGER NOT NULL,
+      critical INTEGER NOT NULL,
+      major INTEGER NOT NULL,
+      minor INTEGER NOT NULL,
+      verdict TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      suggestion TEXT
     );
   `);
 
@@ -332,6 +371,28 @@ export function createStore(dbPath: string): Store {
     listFindings(runId) {
       const rows = db.prepare(`SELECT * FROM findings WHERE run_id = ? ORDER BY seq ASC`).all(runId) as FindingRow[];
       return rows.map(rowToFinding);
+    },
+    saveReport(report) {
+      db.prepare(
+        `INSERT INTO reports (run_id, total, critical, major, minor, verdict, generated_at, suggestion)
+         VALUES (@run_id, @total, @critical, @major, @minor, @verdict, @generated_at, @suggestion)
+         ON CONFLICT(run_id) DO UPDATE SET
+           total=@total, critical=@critical, major=@major, minor=@minor,
+           verdict=@verdict, generated_at=@generated_at, suggestion=@suggestion`,
+      ).run({
+        run_id: report.runId,
+        total: report.total,
+        critical: report.critical,
+        major: report.major,
+        minor: report.minor,
+        verdict: report.verdict,
+        generated_at: report.generatedAt,
+        suggestion: report.suggestion ?? null,
+      });
+    },
+    getReport(runId) {
+      const row = db.prepare(`SELECT * FROM reports WHERE run_id = ?`).get(runId) as ReportRow | undefined;
+      return row ? rowToReport(row) : undefined;
     },
   };
 }

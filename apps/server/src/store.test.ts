@@ -152,3 +152,25 @@ describe('store findings', () => {
     expect(store.listFindings('r1')).toHaveLength(1);
   });
 });
+
+import type { Report } from '@ringq/shared';
+const rep: Report = { runId: 'r1', total: 2, critical: 0, major: 1, minor: 1, verdict: 'fail', generatedAt: 'now', suggestion: '가이드' };
+
+describe('store report', () => {
+  it('saveReport/getReport 라운드트립', () => {
+    const store = createStore(':memory:');
+    store.saveReport(rep);
+    expect(store.getReport('r1')?.verdict).toBe('fail');
+    expect(store.getReport('r1')?.suggestion).toBe('가이드');
+  });
+  it('saveReport는 같은 run을 교체한다', () => {
+    const store = createStore(':memory:');
+    store.saveReport(rep);
+    store.saveReport({ ...rep, verdict: 'pass', suggestion: undefined });
+    expect(store.getReport('r1')?.verdict).toBe('pass');
+    expect(store.getReport('r1')?.suggestion).toBeUndefined();
+  });
+  it('없으면 undefined', () => {
+    expect(createStore(':memory:').getReport('nope')).toBeUndefined();
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createRun, fetchCases, confirmCases } from './api.js';
+import { createRun, fetchCases, confirmCases, fetchCaptures } from './api.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -56,5 +56,21 @@ describe('confirmCases', () => {
   it('서버 실패 시 throw', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'x' }) }));
     await expect(confirmCases('run_1')).rejects.toThrow();
+  });
+});
+
+describe('fetchCaptures', () => {
+  it('GET /api/runs/:id/captures 결과를 반환한다', async () => {
+    const caps = [{ caseId: 'tc_1', type: 'ui', url: 'https://e.com', texts: [], elements: [] }];
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => caps });
+    vi.stubGlobal('fetch', fetchMock);
+    const got = await fetchCaptures('run_1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/runs/run_1/captures');
+    expect(got).toHaveLength(1);
+  });
+
+  it('서버 실패 시 throw', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'x' }) }));
+    await expect(fetchCaptures('run_1')).rejects.toThrow();
   });
 });

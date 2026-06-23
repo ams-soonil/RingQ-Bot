@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { ProgressEvent, Run } from '@ringq/shared';
 import { createRun } from './api.js';
 import { CaseReview } from './CaseReview.js';
+import { Captures } from './Captures.js';
 
 export function App() {
   const [figmaLink, setFigmaLink] = useState('');
@@ -11,6 +12,7 @@ export function App() {
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [awaitingReview, setAwaitingReview] = useState(false);
+  const [done, setDone] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
   async function onRun() {
@@ -19,6 +21,7 @@ export function App() {
     setError(null);
     setEvents([]);
     setAwaitingReview(false);
+    setDone(false);
     try {
       const created = await createRun({
         figmaLinks: [figmaLink],
@@ -32,6 +35,7 @@ export function App() {
         const ev = JSON.parse((e as MessageEvent).data) as ProgressEvent;
         setEvents((prev) => [...prev, ev]);
         if (ev.phase === 'awaiting-review') setAwaitingReview(true);
+        if (ev.phase === 'done') setDone(true);
         if (ev.phase === 'done' || ev.phase === 'failed') {
           es.close();
           esRef.current = null;
@@ -72,6 +76,7 @@ export function App() {
       {run && awaitingReview && (
         <CaseReview runId={run.id} onConfirmed={() => setAwaitingReview(false)} />
       )}
+      {run && done && <Captures runId={run.id} />}
     </main>
   );
 }

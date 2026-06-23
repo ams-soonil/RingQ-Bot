@@ -201,3 +201,23 @@ describe('GET screenshot', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+import type { Finding } from '@ringq/shared';
+
+describe('GET /api/runs/:id/findings', () => {
+  it('run의 finding을 반환한다', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const fs: Finding[] = [{ id: 'fd_1', runId: run.id, caseId: 'tc_1', category: 'missing-text', severity: 'major', message: 'x', source: 'structural' }];
+    store.saveFindings(run.id, fs);
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/findings` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toHaveLength(1);
+  });
+
+  it('없는 run이면 404', async () => {
+    const { app } = setup();
+    const res = await app.inject({ method: 'GET', url: '/api/runs/nope/findings' });
+    expect(res.statusCode).toBe(404);
+  });
+});

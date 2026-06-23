@@ -91,6 +91,11 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
     },
   );
 
+  app.get<{ Params: { id: string } }>('/api/runs/:id/findings', async (req, reply) => {
+    if (!store.getRun(req.params.id)) return reply.code(404).send({ error: 'not found' });
+    return store.listFindings(req.params.id);
+  });
+
   app.post<{ Params: { id: string } }>('/api/runs/:id/confirm', async (req, reply) => {
     const run = store.getRun(req.params.id);
     if (!run) return reply.code(404).send({ error: 'not found' });

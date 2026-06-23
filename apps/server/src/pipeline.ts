@@ -2,22 +2,23 @@ import type { RunPhase } from '@ringq/shared';
 import type { Store } from './store.js';
 import type { FigmaClient } from './figma/client.js';
 import type { CaseGenerator } from './cases/generator.js';
+import type { Runner } from './runner/runner.js';
 import { emitProgress, now } from './events.js';
 
 interface PipelineDeps {
   store: Store;
   figma: FigmaClient;
   generator: CaseGenerator;
+  runner: Runner;
 }
 
-const RESUME_STEPS: { phase: RunPhase; message: string }[] = [
-  { phase: 'running', message: 'Playwright로 사이트 실행 중...' },
+const STUB_STEPS: { phase: RunPhase; message: string }[] = [
   { phase: 'comparing', message: 'Figma ↔ 실제 화면 비교 중...' },
   { phase: 'reporting', message: '리포트 작성 중...' },
 ];
 
 export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = {}) {
-  const { store, figma, generator } = deps;
+  const { store, figma, generator, runner } = deps;
   const delayMs = opts.delayMs ?? 0;
 
   async function generate(runId: string): Promise<void> {
@@ -40,7 +41,16 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
   }
 
   async function resume(runId: string): Promise<void> {
-    for (const step of RESUME_STEPS) {
+    // running (실제 Playwright 캡처)
+    store.updateRun(runId, { phase: 'running' });
+    emitProgress({ runId, phase: 'running', message: 'Playwright로 사이트 캡처 중...', at: now() });
+    const captures = await runner.run(runId);
+    store.saveCaptures(runId, captures);
+    emitProgress({ runId, phase: 'running', message: `${captures.length}개 화면 캡처 완료`, at: now() });
+    if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+
+    // comparing / reporting (스텁 — Plan 4~5)
+    for (const step of STUB_STEPS) {
       store.updateRun(runId, { phase: step.phase });
       emitProgress({ runId, phase: step.phase, message: step.message, at: now() });
       if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));

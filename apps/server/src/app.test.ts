@@ -6,6 +6,8 @@ import { createPipeline } from './pipeline.js';
 import { createCaseGenerator } from './cases/generator.js';
 import { createFakeLLM } from './llm/fake.js';
 import type { FigmaClient, FigmaExtract } from './figma/client.js';
+import { createRunner } from './runner/runner.js';
+import { createFakeDriver } from './browser/fake.js';
 
 const fakeExtract: FigmaExtract = {
   fileKey: 'A',
@@ -17,7 +19,9 @@ const fakeFigma: FigmaClient = { fetchExtract: async () => fakeExtract };
 function setup() {
   const store = createStore(':memory:');
   const generator = createCaseGenerator(createFakeLLM([]));
-  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator }, { delayMs: 0 }));
+  const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
+  const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
+  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator, runner }, { delayMs: 0 }));
   const app = buildApp({ store, queue });
   return { store, queue, app };
 }

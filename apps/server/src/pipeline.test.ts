@@ -6,6 +6,8 @@ import { createFakeLLM } from './llm/fake.js';
 import { runEvents } from './events.js';
 import type { ProgressEvent } from '@ringq/shared';
 import type { FigmaExtract, FigmaClient } from './figma/client.js';
+import { createRunner } from './runner/runner.js';
+import { createFakeDriver } from './browser/fake.js';
 
 const extract: FigmaExtract = {
   fileKey: 'ABC',
@@ -18,7 +20,9 @@ const input = { figmaLinks: ['https://www.figma.com/file/ABC/My?node-id=1-2'], s
 function makeDeps() {
   const store = createStore(':memory:');
   const generator = createCaseGenerator(createFakeLLM([]));
-  return { store, generator, figma: fakeFigma };
+  const driver = createFakeDriver({ screen: { texts: ['홈'], elements: [] } });
+  const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
+  return { store, generator, figma: fakeFigma, runner };
 }
 
 describe('pipeline generate 단계', () => {
@@ -41,15 +45,18 @@ describe('pipeline generate 단계', () => {
 });
 
 describe('pipeline resume 단계', () => {
-  it('cases-confirmed면 나머지 스텁을 진행하고 done으로 끝낸다', async () => {
+  it('cases-confirmed면 runner로 캡처 저장 후 done으로 끝낸다', async () => {
     const deps = makeDeps();
     const run = deps.store.createRun(input);
+    deps.store.saveCases(run.id, [
+      { id: 'tc_1', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: 'UI', figmaNodeId: '1:2' },
+    ]);
     deps.store.updateRun(run.id, { phase: 'cases-confirmed' });
 
     await createPipeline(deps, { delayMs: 0 })(run.id);
 
     expect(deps.store.getRun(run.id)!.phase).toBe('done');
-    expect(deps.store.getRun(run.id)!.status).toBe('done');
+    expect(deps.store.listCaptures(run.id).length).toBe(1);
   });
 });
 

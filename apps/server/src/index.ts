@@ -7,6 +7,8 @@ import { createPipeline } from './pipeline.js';
 import { createFigmaClient } from './figma/client.js';
 import { createAnthropicLLM } from './llm/anthropic.js';
 import { createCaseGenerator } from './cases/generator.js';
+import { createRunner } from './runner/runner.js';
+import { createPlaywrightDriver } from './browser/playwright.js';
 
 const figmaToken = process.env.FIGMA_TOKEN;
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -24,7 +26,12 @@ const store = createStore('data/ringq.db');
 const figma = createFigmaClient({ token: figmaToken });
 const llm = createAnthropicLLM({ apiKey: anthropicKey });
 const generator = createCaseGenerator(llm);
-const queue = createQueue(createPipeline({ store, figma, generator }, { delayMs: 300 }));
+const driver = createPlaywrightDriver({ headless: true });
+const runner = createRunner(
+  { store, driver },
+  { creds: { username: process.env.SITE_USERNAME, password: process.env.SITE_PASSWORD } },
+);
+const queue = createQueue(createPipeline({ store, figma, generator, runner }, { delayMs: 300 }));
 const app = buildApp({ store, queue });
 
 const port = Number(process.env.PORT ?? 4000);

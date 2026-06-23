@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import type { ProjectInput, Run, RunPhase, RunStatus, TestCase } from '@ringq/shared';
+import type { ProjectInput, Run, RunPhase, RunStatus, TestCase, RunCapture } from '@ringq/shared';
 
 export interface Store {
   createRun(input: ProjectInput): Run;
@@ -11,6 +11,8 @@ export interface Store {
   updateCase(caseId: string, patch: Partial<Pick<TestCase, 'title' | 'status' | 'uiExpectation' | 'steps'>>): TestCase;
   addCase(testCase: TestCase): TestCase;
   confirmCases(runId: string): void;
+  saveCaptures(runId: string, captures: RunCapture[]): void;
+  listCaptures(runId: string): RunCapture[];
 }
 
 interface CaseRow {
@@ -38,6 +40,32 @@ function rowToCase(row: CaseRow): TestCase {
     uiExpectation: row.ui_expectation ? JSON.parse(row.ui_expectation) : undefined,
     steps: row.steps ? JSON.parse(row.steps) : undefined,
     confidence: row.confidence ?? undefined,
+  };
+}
+
+interface CaptureRow {
+  run_id: string;
+  case_id: string;
+  type: string;
+  url: string;
+  texts: string;
+  elements: string;
+  screenshot_path: string | null;
+  flow_ok: number | null;
+  error: string | null;
+}
+
+function rowToCapture(row: CaptureRow): RunCapture {
+  return {
+    caseId: row.case_id,
+    runId: row.run_id,
+    type: row.type as RunCapture['type'],
+    url: row.url,
+    texts: JSON.parse(row.texts),
+    elements: JSON.parse(row.elements),
+    screenshotPath: row.screenshot_path ?? undefined,
+    flowOk: row.flow_ok === null ? undefined : row.flow_ok === 1,
+    error: row.error ?? undefined,
   };
 }
 
@@ -77,6 +105,21 @@ export function createStore(dbPath: string): Store {
       phase TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS captures (
+      seq INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      url TEXT NOT NULL,
+      texts TEXT NOT NULL,
+      elements TEXT NOT NULL,
+      screenshot_path TEXT,
+      flow_ok INTEGER,
+      error TEXT
     );
   `);
 
@@ -198,6 +241,34 @@ export function createStore(dbPath: string): Store {
     },
     confirmCases(runId) {
       db.prepare(`UPDATE test_cases SET status = 'confirmed' WHERE run_id = ? AND status = 'draft'`).run(runId);
+    },
+    saveCaptures(runId, captures) {
+      const del = db.prepare(`DELETE FROM captures WHERE run_id = ?`);
+      const ins = db.prepare(
+        `INSERT INTO captures (run_id, case_id, type, url, texts, elements, screenshot_path, flow_ok, error)
+         VALUES (@run_id, @case_id, @type, @url, @texts, @elements, @screenshot_path, @flow_ok, @error)`,
+      );
+      const tx = db.transaction((rows: RunCapture[]) => {
+        del.run(runId);
+        for (const c of rows) {
+          ins.run({
+            run_id: runId,
+            case_id: c.caseId,
+            type: c.type,
+            url: c.url,
+            texts: JSON.stringify(c.texts),
+            elements: JSON.stringify(c.elements),
+            screenshot_path: c.screenshotPath ?? null,
+            flow_ok: c.flowOk === undefined ? null : c.flowOk ? 1 : 0,
+            error: c.error ?? null,
+          });
+        }
+      });
+      tx(captures);
+    },
+    listCaptures(runId) {
+      const rows = db.prepare(`SELECT * FROM captures WHERE run_id = ? ORDER BY seq ASC`).all(runId) as CaptureRow[];
+      return rows.map(rowToCapture);
     },
   };
 }

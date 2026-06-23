@@ -100,3 +100,34 @@ describe('store test_cases', () => {
     expect(got.find((c) => c.id === 'tc_2')?.status).toBe('rejected');
   });
 });
+
+import type { RunCapture } from '@ringq/shared';
+
+const cap1: RunCapture = {
+  caseId: 'tc_1', runId: 'r1', type: 'ui', url: 'https://e.com',
+  texts: ['로그인'], elements: ['button'], screenshotPath: 'data/runs/r1/tc_1.png',
+};
+const cap2: RunCapture = {
+  caseId: 'tc_2', runId: 'r1', type: 'flow', url: 'https://e.com',
+  texts: [], elements: [], flowOk: false, error: 'click 실패',
+};
+
+describe('store captures', () => {
+  it('saveCaptures/listCaptures 라운드트립', () => {
+    const store = createStore(':memory:');
+    store.saveCaptures('r1', [cap1, cap2]);
+    const got = store.listCaptures('r1');
+    expect(got).toHaveLength(2);
+    expect(got[0].texts).toEqual(['로그인']);
+    expect(got[0].screenshotPath).toBe('data/runs/r1/tc_1.png');
+    expect(got[1].flowOk).toBe(false);
+    expect(got[1].error).toBe('click 실패');
+  });
+
+  it('saveCaptures는 기존 캡처를 교체한다', () => {
+    const store = createStore(':memory:');
+    store.saveCaptures('r1', [cap1, cap2]);
+    store.saveCaptures('r1', [cap1]);
+    expect(store.listCaptures('r1')).toHaveLength(1);
+  });
+});

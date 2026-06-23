@@ -96,6 +96,13 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
     return store.listFindings(req.params.id);
   });
 
+  app.get<{ Params: { id: string } }>('/api/runs/:id/report', async (req, reply) => {
+    if (!store.getRun(req.params.id)) return reply.code(404).send({ error: 'not found' });
+    const report = store.getReport(req.params.id);
+    if (!report) return reply.code(404).send({ error: 'no report' });
+    return report;
+  });
+
   app.post<{ Params: { id: string } }>('/api/runs/:id/confirm', async (req, reply) => {
     const run = store.getRun(req.params.id);
     if (!run) return reply.code(404).send({ error: 'not found' });

@@ -223,3 +223,30 @@ describe('GET /api/runs/:id/findings', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+import type { Report } from '@ringq/shared';
+
+describe('GET /api/runs/:id/report', () => {
+  it('리포트가 있으면 200으로 반환한다', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const rep: Report = { runId: run.id, total: 1, critical: 0, major: 1, minor: 0, verdict: 'fail', generatedAt: 'now' };
+    store.saveReport(rep);
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/report` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().verdict).toBe('fail');
+  });
+
+  it('리포트가 아직 없으면 404', async () => {
+    const { app, store } = setup();
+    const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
+    const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/report` });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('없는 run이면 404', async () => {
+    const { app } = setup();
+    const res = await app.inject({ method: 'GET', url: '/api/runs/nope/report' });
+    expect(res.statusCode).toBe(404);
+  });
+});

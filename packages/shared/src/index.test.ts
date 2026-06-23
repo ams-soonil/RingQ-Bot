@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ProjectInputSchema, ProgressEventSchema, RunPhaseSchema, TestCaseSchema } from './index.js';
+import { ProjectInputSchema, ProgressEventSchema, RunPhaseSchema, TestCaseSchema, RunCaptureSchema } from './index.js';
 
 describe('ProjectInputSchema', () => {
   it('유효한 입력을 통과시킨다', () => {
@@ -79,5 +79,35 @@ describe('TestCaseSchema', () => {
         steps: [{ action: 'teleport', target: 'x' }],
       }),
     ).toThrow();
+  });
+});
+
+describe('RunCaptureSchema', () => {
+  it('UI 캡처를 검증한다', () => {
+    const c = RunCaptureSchema.parse({
+      caseId: 'tc_1', runId: 'run_1', type: 'ui',
+      url: 'https://e.com', texts: ['로그인'], elements: ['button'],
+      screenshotPath: 'data/runs/run_1/tc_1.png',
+    });
+    expect(c.texts).toContain('로그인');
+  });
+
+  it('flow 캡처의 flowOk와 error를 허용한다', () => {
+    const c = RunCaptureSchema.parse({
+      caseId: 'tc_2', runId: 'run_1', type: 'flow',
+      url: 'https://e.com', texts: [], elements: [], flowOk: false, error: 'click 실패',
+    });
+    expect(c.flowOk).toBe(false);
+    expect(c.error).toBe('click 실패');
+  });
+});
+
+describe('TestCase.routePath', () => {
+  it('routePath를 허용한다', () => {
+    const c = TestCaseSchema.parse({
+      id: 'tc_1', runId: 'run_1', type: 'ui', source: 'figma', status: 'draft',
+      title: '로그인 UI', routePath: '/login',
+    });
+    expect(c.routePath).toBe('/login');
   });
 });

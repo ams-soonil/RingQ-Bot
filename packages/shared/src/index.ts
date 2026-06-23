@@ -73,8 +73,22 @@ export const TestCaseSchema = z.object({
   status: TestCaseStatusSchema,
   title: z.string(),
   figmaNodeId: z.string().optional(),
+  routePath: z.string().optional(),
   uiExpectation: UiExpectationSchema.optional(),
   steps: z.array(FlowStepSchema).optional(),
   confidence: z.number().min(0).max(1).optional(),
 });
 export type TestCase = z.infer<typeof TestCaseSchema>;
+
+export const RunCaptureSchema = z.object({
+  caseId: z.string(),
+  runId: z.string(),
+  type: TestCaseTypeSchema,
+  url: z.string(),
+  texts: z.array(z.string()),
+  elements: z.array(z.string()),
+  screenshotPath: z.string().optional(),
+  flowOk: z.boolean().optional(),
+  error: z.string().optional(),
+});
+export type RunCapture = z.infer<typeof RunCaptureSchema>;

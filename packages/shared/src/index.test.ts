@@ -132,3 +132,15 @@ describe('FindingSchema', () => {
     ).toThrow();
   });
 });
+
+import { ReportSchema } from './index.js';
+
+describe('ReportSchema', () => {
+  it('리포트를 검증한다', () => {
+    const r = ReportSchema.parse({ runId: 'r1', total: 3, critical: 1, major: 1, minor: 1, verdict: 'fail', generatedAt: '2026-06-23T00:00:00Z' });
+    expect(r.verdict).toBe('fail');
+  });
+  it('잘못된 verdict를 거부한다', () => {
+    expect(() => ReportSchema.parse({ runId: 'r1', total: 0, critical: 0, major: 0, minor: 0, verdict: 'maybe', generatedAt: 'x' })).toThrow();
+  });
+});

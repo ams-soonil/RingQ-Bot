@@ -109,3 +109,18 @@ export const FindingSchema = z.object({
   source: FindingSourceSchema,
 });
 export type Finding = z.infer<typeof FindingSchema>;
+
+export const VerdictSchema = z.enum(['pass', 'fail']);
+export type Verdict = z.infer<typeof VerdictSchema>;
+
+export const ReportSchema = z.object({
+  runId: z.string(),
+  total: z.number(),
+  critical: z.number(),
+  major: z.number(),
+  minor: z.number(),
+  verdict: VerdictSchema,
+  generatedAt: z.string(),
+  suggestion: z.string().optional(),
+});
+export type Report = z.infer<typeof ReportSchema>;

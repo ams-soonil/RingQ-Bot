@@ -30,7 +30,12 @@ export function createCaseGenerator(llm: CaseLLM): CaseGenerator {
 
       for (const d of drafts) {
         if (d.type === 'ui') {
-          const frame = extract.frames.find((f) => f.nodeId === d.figmaNodeId);
+          // figmaNodeId가 없거나 알려진 프레임과 매칭되지 않으면 스킵
+          // (미매칭 초안은 per-frame 기본 루프가 커버하므로 중복/노드없는 케이스 방지)
+          const frame = d.figmaNodeId
+            ? extract.frames.find((f) => f.nodeId === d.figmaNodeId)
+            : undefined;
+          if (!frame) continue;
           cases.push(
             TestCaseSchema.parse({
               id: nextId(),
@@ -41,13 +46,13 @@ export function createCaseGenerator(llm: CaseLLM): CaseGenerator {
               title: d.title,
               figmaNodeId: d.figmaNodeId,
               uiExpectation: {
-                texts: d.texts ?? frame?.texts ?? [],
-                elements: d.elements ?? frame?.elements.map((e) => e.name) ?? [],
-                colors: frame?.colors ?? [],
+                texts: d.texts ?? frame.texts,
+                elements: d.elements ?? frame.elements.map((e) => e.name),
+                colors: frame.colors,
               },
             }),
           );
-          if (d.figmaNodeId) coveredUiNodes.add(d.figmaNodeId);
+          coveredUiNodes.add(d.figmaNodeId!);
         } else {
           const steps: FlowStep[] = (d.steps ?? [])
             .filter((s) => VALID_ACTIONS.has(s.action) && known.has(s.target))

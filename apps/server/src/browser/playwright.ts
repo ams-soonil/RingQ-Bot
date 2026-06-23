@@ -18,6 +18,9 @@ class PlaywrightSession implements BrowserSession {
       const user = this.page
         .locator('input[type=email], input[type=text], input[name*=user i], input[name*=email i], input[name*=id i]')
         .first();
+      // Decision-C: if no fillable username field exists, fill() throws and we
+      // return 'failed' (caught below). Surfacing the failure is intentional —
+      // silently skipping a partially-matched login form would hide real errors.
       await user.fill(creds.username);
       await pw.first().fill(creds.password);
       const btn = this.page
@@ -72,8 +75,13 @@ export function createPlaywrightDriver(opts: { headless?: boolean } = {}): Brows
   return {
     async open(): Promise<BrowserSession> {
       const browser = await chromium.launch({ headless: opts.headless ?? true });
-      const page = await browser.newPage();
-      return new PlaywrightSession(browser, page);
+      try {
+        const page = await browser.newPage();
+        return new PlaywrightSession(browser, page);
+      } catch (err) {
+        await browser.close().catch(() => {});
+        throw err;
+      }
     },
   };
 }

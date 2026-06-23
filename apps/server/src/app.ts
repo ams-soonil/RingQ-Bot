@@ -38,9 +38,14 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     });
+    reply.raw.on('error', () => {});
     reply.raw.write(`event: snapshot\ndata: ${JSON.stringify(run)}\n\n`);
 
     const onProgress = (ev: ProgressEvent) => {
+      if (reply.raw.writableEnded) {
+        runEvents.off(req.params.id, onProgress);
+        return;
+      }
       reply.raw.write(`event: progress\ndata: ${JSON.stringify(ev)}\n\n`);
       if (ev.phase === 'done' || ev.phase === 'failed') {
         runEvents.off(req.params.id, onProgress);

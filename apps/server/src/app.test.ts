@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildApp } from './app.js';
 import { createStore } from './store.js';
 import { createQueue } from './queue.js';

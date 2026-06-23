@@ -1,9 +1,10 @@
-import type { RunPhase } from '@ringq/shared';
 import type { Store } from './store.js';
 import type { FigmaClient } from './figma/client.js';
 import type { CaseGenerator } from './cases/generator.js';
 import type { Runner } from './runner/runner.js';
 import type { Comparator } from './compare/comparator.js';
+import type { FixSuggester } from './report/suggester-types.js';
+import { buildReport } from './report/builder.js';
 import { emitProgress, now } from './events.js';
 
 interface PipelineDeps {
@@ -12,14 +13,11 @@ interface PipelineDeps {
   generator: CaseGenerator;
   runner: Runner;
   comparator: Comparator;
+  suggester: FixSuggester;
 }
 
-const STUB_STEPS: { phase: RunPhase; message: string }[] = [
-  { phase: 'reporting', message: '리포트 작성 중...' },
-];
-
 export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = {}) {
-  const { store, figma, generator, runner, comparator } = deps;
+  const { store, figma, generator, runner, comparator, suggester } = deps;
   const delayMs = opts.delayMs ?? 0;
 
   async function generate(runId: string): Promise<void> {
@@ -58,12 +56,23 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
     emitProgress({ runId, phase: 'comparing', message: `결함 ${findings.length}건 발견`, at: now() });
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
-    // reporting (스텁 — Plan 5)
-    for (const step of STUB_STEPS) {
-      store.updateRun(runId, { phase: step.phase });
-      emitProgress({ runId, phase: step.phase, message: step.message, at: now() });
-      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+    // reporting (실제: 리포트 + 베스트에포트 수정 가이드)
+    store.updateRun(runId, { phase: 'reporting' });
+    emitProgress({ runId, phase: 'reporting', message: '리포트 작성 중...', at: now() });
+    const reportFindings = store.listFindings(runId);
+    const report = buildReport(runId, reportFindings, now());
+    if (reportFindings.length > 0) {
+      try {
+        const confirmedCases = store.listCases(runId).filter((c) => c.status === 'confirmed');
+        report.suggestion = await suggester.suggest(reportFindings, confirmedCases);
+      } catch {
+        // 수정 가이드 실패는 무시(리포트는 저장)
+      }
     }
+    store.saveReport(report);
+    emitProgress({ runId, phase: 'reporting', message: `리포트 완료 — ${report.verdict.toUpperCase()}`, at: now() });
+    if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+
     store.updateRun(runId, { phase: 'done', status: 'done' });
     emitProgress({ runId, phase: 'done', message: 'QA 완료', at: now() });
   }

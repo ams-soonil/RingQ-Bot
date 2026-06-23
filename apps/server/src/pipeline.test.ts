@@ -10,6 +10,7 @@ import { createRunner } from './runner/runner.js';
 import { createFakeDriver } from './browser/fake.js';
 import { createComparator } from './compare/comparator.js';
 import { createFakeVision } from './compare/vision-fake.js';
+import { createFakeSuggester } from './report/suggester-fake.js';
 
 const extract: FigmaExtract = {
   fileKey: 'ABC',
@@ -25,7 +26,8 @@ function makeDeps() {
   const driver = createFakeDriver({ screen: { texts: ['홈'], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
   const comparator = createComparator({ store, figma: fakeFigma, vision: createFakeVision([]) });
-  return { store, generator, figma: fakeFigma, runner, comparator };
+  const suggester = createFakeSuggester('가이드');
+  return { store, generator, figma: fakeFigma, runner, comparator, suggester };
 }
 
 describe('pipeline generate 단계', () => {
@@ -61,6 +63,9 @@ describe('pipeline resume 단계', () => {
     expect(deps.store.getRun(run.id)!.phase).toBe('done');
     expect(deps.store.listCaptures(run.id).length).toBe(1);
     expect(deps.store.listFindings(run.id).length).toBeGreaterThan(0); // 기대 텍스트 누락 → 구조 finding
+    const report = deps.store.getReport(run.id);
+    expect(report?.verdict).toBe('fail'); // major finding → fail
+    expect(report?.suggestion).toBe('가이드'); // findings>0 → 수정 가이드 부착
   });
 });
 

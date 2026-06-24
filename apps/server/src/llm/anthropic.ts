@@ -68,7 +68,9 @@ export function createAnthropicLLM(opts: { apiKey: string; model?: string }): Ca
     async proposeCases(extract: FigmaExtract): Promise<LlmCaseDraft[]> {
       const res = await client.messages.create({
         model,
-        max_tokens: 4096,
+        // 프레임이 많은 설계도는 케이스(texts/elements 포함) 출력이 길어 4096으로는
+        // tool_use JSON이 잘려 cases가 비어버린다(zod "cases Required"). 넉넉히 확보.
+        max_tokens: 16384,
         system: SYSTEM,
         tools: [EMIT_TOOL],
         tool_choice: { type: 'tool', name: 'emit_cases' },
@@ -77,6 +79,10 @@ export function createAnthropicLLM(opts: { apiKey: string; model?: string }): Ca
       const block = res.content.find((b) => b.type === 'tool_use');
       if (!block || block.type !== 'tool_use') {
         throw new Error('LLM이 emit_cases 툴을 호출하지 않음');
+      }
+      // 출력이 잘리면(max_tokens) tool_use input이 불완전해 cases가 빈다 → 원인을 명확히.
+      if (res.stop_reason === 'max_tokens') {
+        throw new Error('LLM 출력이 max_tokens로 잘렸습니다(케이스가 너무 많음). 한도를 더 늘리거나 설계 범위를 줄이세요.');
       }
       const parsed = LlmOutputSchema.safeParse(block.input);
       if (!parsed.success) {

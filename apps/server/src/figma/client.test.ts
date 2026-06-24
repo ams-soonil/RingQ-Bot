@@ -64,4 +64,33 @@ describe('FigmaClient.fetchExtract', () => {
       client.fetchExtract('https://www.figma.com/file/ABC/My?node-id=1-2'),
     ).rejects.toThrow(/figma API 403/);
   });
+
+  it('CANVAS(페이지) 노드는 자식 화면 프레임별로 분리한다', async () => {
+    const canvasNodes = {
+      nodes: {
+        '7:7': {
+          document: {
+            id: '7:7',
+            name: '01. 상품관리',
+            type: 'CANVAS',
+            children: [
+              { id: '7:10', name: 'SCM_PM_001', type: 'FRAME', children: [{ id: '7:11', name: '제목', type: 'TEXT', characters: '상품목록' }] },
+              { id: '7:20', name: 'SCM_PM_002', type: 'FRAME', children: [{ id: '7:21', name: '제목', type: 'TEXT', characters: '삭제상품' }] },
+              { id: '7:30', name: 'image deco', type: 'RECTANGLE' },
+            ],
+          },
+        },
+      },
+    };
+    const fetchImpl = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.includes('/v1/files/')) return { ok: true, status: 200, json: async () => canvasNodes } as Response;
+      return { ok: true, status: 200, json: async () => ({ images: {} }) } as Response;
+    });
+    const client = createFigmaClient({ token: 't', fetchImpl: fetchImpl as unknown as typeof fetch });
+    const extract = await client.fetchExtract('https://www.figma.com/design/ABC/Spec?node-id=7-7');
+
+    expect(extract.frames.map((f) => f.name).sort()).toEqual(['SCM_PM_001', 'SCM_PM_002']);
+    const s1 = extract.frames.find((f) => f.nodeId === '7:10')!;
+    expect(s1.texts).toEqual(['상품목록']);
+  });
 });

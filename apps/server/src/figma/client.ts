@@ -58,6 +58,25 @@ interface RawNode {
   transitionNodeID?: string;
 }
 
+const SCREEN_CONTAINER_TYPES = new Set(['CANVAS', 'SECTION']);
+const SCREEN_FRAME_TYPES = new Set(['FRAME', 'COMPONENT', 'INSTANCE']);
+
+/**
+ * 주어진 루트 노드를 "화면 프레임" 단위로 분리한다.
+ * - CANVAS/SECTION(페이지·섹션)이면 직속 자식 중 내용 있는 프레임들을 각각 한 화면으로.
+ *   (설계서 페이지를 통째로 주면 18개 화면이 1개로 뭉개지는 것을 방지)
+ * - 그 외(단일 화면 프레임 등)는 루트 자체를 한 화면으로.
+ */
+function collectScreenFrames(root: RawNode): RawNode[] {
+  if (SCREEN_CONTAINER_TYPES.has(root.type)) {
+    const screens = (root.children ?? []).filter(
+      (c) => SCREEN_FRAME_TYPES.has(c.type) && (c.children?.length ?? 0) > 0,
+    );
+    if (screens.length > 0) return screens;
+  }
+  return [root];
+}
+
 function walk(
   node: RawNode,
   frame: FigmaFrame,
@@ -107,10 +126,18 @@ export function createFigmaClient(opts: { token: string; fetchImpl?: typeof fetc
         nodes: Record<string, { document: RawNode }>;
       };
 
+      // 반환된 루트 노드들을 화면 프레임 단위로 분리(페이지 → 화면별).
+      const screenNodes: RawNode[] = [];
+      for (const entry of Object.values(nodesBody.nodes)) {
+        screenNodes.push(...collectScreenFrames(entry.document));
+      }
+
+      // 화면 프레임별 렌더 이미지(비전 비교용)를 그 노드 id들로 한 번에 조회.
       let images: Record<string, string> = {};
-      if (ids) {
+      const screenIds = screenNodes.map((n) => n.id);
+      if (screenIds.length) {
         const imgRes = await doFetch(
-          `https://api.figma.com/v1/images/${fileKey}?ids=${ids}&format=png&scale=2`,
+          `https://api.figma.com/v1/images/${fileKey}?ids=${screenIds.join(',')}&format=png&scale=2`,
           { headers },
         );
         if (imgRes.ok) {
@@ -120,17 +147,16 @@ export function createFigmaClient(opts: { token: string; fetchImpl?: typeof fetc
 
       const frames: FigmaFrame[] = [];
       const transitions: FigmaTransition[] = [];
-      for (const [key, entry] of Object.entries(nodesBody.nodes)) {
-        const doc = entry.document;
+      for (const node of screenNodes) {
         const frame: FigmaFrame = {
-          nodeId: doc.id,
-          name: doc.name,
+          nodeId: node.id,
+          name: node.name,
           texts: [],
           elements: [],
           colors: [],
-          imageUrl: images[key] ?? images[doc.id],
+          imageUrl: images[node.id],
         };
-        walk(doc, frame, transitions);
+        walk(node, frame, transitions);
         frames.push(frame);
       }
 

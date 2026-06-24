@@ -30,11 +30,13 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
     const cases = await generator.generate(runId, extract);
     store.saveCases(runId, cases);
 
-    store.updateRun(runId, { phase: 'awaiting-review' });
+    // 검수 단계를 건너뛰고 자동 확정 후 계속 진행한다(사람 검수 없이 즉시 실행).
+    store.confirmCases(runId);
+    store.updateRun(runId, { phase: 'cases-confirmed' });
     emitProgress({
       runId,
-      phase: 'awaiting-review',
-      message: `케이스 ${cases.length}개 생성됨 — 검수 후 확정해 주세요`,
+      phase: 'cases-confirmed',
+      message: `케이스 ${cases.length}개 자동 확정 — 계속 진행`,
       at: now(),
     });
   }
@@ -82,7 +84,8 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
       const run = store.getRun(runId);
       if (!run) throw new Error(`run not found: ${runId}`);
       if (run.phase === 'queued' || run.phase === 'generating-cases') {
-        await generate(runId);
+        await generate(runId); // 자동 확정 → phase 'cases-confirmed'
+        await resume(runId); // 검수 없이 바로 캡처·비교·리포트로 이어감
       } else if (run.phase === 'cases-confirmed') {
         await resume(runId);
       }

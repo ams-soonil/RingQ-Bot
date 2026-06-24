@@ -30,8 +30,8 @@ function makeDeps() {
   return { store, generator, figma: fakeFigma, runner, comparator, suggester };
 }
 
-describe('pipeline generate 단계', () => {
-  it('케이스를 생성·저장하고 awaiting-review에서 멈춘다', async () => {
+describe('pipeline generate 단계 (검수 스킵 자동 확정)', () => {
+  it('케이스를 생성하면 자동 확정 후 멈추지 않고 done까지 진행한다', async () => {
     const deps = makeDeps();
     const run = deps.store.createRun(input);
     const phases: string[] = [];
@@ -41,11 +41,13 @@ describe('pipeline generate 단계', () => {
     await createPipeline(deps, { delayMs: 0 })(run.id);
 
     runEvents.off(run.id, listener);
-    expect(deps.store.getRun(run.id)!.phase).toBe('awaiting-review');
     expect(deps.store.listCases(run.id).length).toBeGreaterThan(0); // 프레임당 UI 케이스 보장
+    expect(deps.store.listCases(run.id).every((c) => c.status === 'confirmed')).toBe(true); // 자동 확정
+    expect(deps.store.getRun(run.id)!.phase).toBe('done'); // 검수에서 멈추지 않고 끝까지
     expect(phases).toContain('generating-cases');
-    expect(phases).toContain('awaiting-review');
-    expect(phases).not.toContain('done');
+    expect(phases).toContain('cases-confirmed');
+    expect(phases).not.toContain('awaiting-review'); // 검수 단계 없음
+    expect(phases).toContain('done');
   });
 });
 

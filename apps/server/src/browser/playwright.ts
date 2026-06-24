@@ -60,16 +60,14 @@ class PlaywrightSession implements BrowserSession {
       .waitFor({ state: 'visible', timeout: 6000 })
       .catch(() => {});
 
-    // 1) 직접 매칭: 입력 텍스트를 "포함하는" 클릭 가능한 요소.
-    if (await this.clickLocator(this.page.getByRole('button', { name: text }).first())) return true;
-    if (await this.clickLocator(this.page.getByText(text, { exact: false }).first())) return true;
+    // 1) 직접 매칭: 입력 텍스트를 라벨로 갖는 "버튼"을 우선 클릭(컨테이너 div 오클릭 방지).
+    if (await this.clickByLabel(text)) return true;
 
     // 2) 자연어 지시 대응: 입력이 문장이면 그대로는 안 맞는다. 페이지의 클릭 가능한
     //    요소 라벨 중 "그 라벨이 입력 문장 안에 포함되는" 것을 찾아 클릭(공백 무시, 가장 긴 라벨 우선).
-    //    예: "...상품 추가 버튼을 클릭..." → 라벨 "상품 추가" 버튼을 매칭.
+    //    예: "...상품 추가 버튼을 클릭..." → 라벨 "상품추가" 버튼을 매칭.
     try {
       const labels: string[] = await this.page
-        // 네비 링크(a)는 제외하고 "버튼"만 후보로(자연어 지시는 보통 버튼 클릭).
         .locator('button, [role=button], input[type=submit], input[type=button]')
         .evaluateAll((els) =>
           els
@@ -81,12 +79,25 @@ class PlaywrightSession implements BrowserSession {
       const best = labels
         .filter((l) => l.length >= 2 && t.includes(norm(l)))
         .sort((a, b) => b.length - a.length)[0];
-      if (best) {
-        if (await this.clickLocator(this.page.getByRole('button', { name: best }).first())) return true;
-        if (await this.clickLocator(this.page.getByText(best, { exact: false }).first())) return true;
-      }
+      if (best && (await this.clickByLabel(best))) return true;
     } catch {
       /* fallthrough */
+    }
+
+    // 3) 최후: 텍스트를 가진 임의 요소(링크 등).
+    return this.clickLocator(this.page.getByText(text, { exact: false }).first());
+  }
+
+  /** 라벨 텍스트로 "실제 클릭 가능한 요소(버튼 우선)"를 찾아 클릭. 컨테이너 div를 잡지 않도록. */
+  private async clickByLabel(label: string): Promise<boolean> {
+    const candidates = [
+      this.page.locator('button', { hasText: label }).first(),
+      this.page.getByRole('button', { name: label }).first(),
+      this.page.locator('[role=button]', { hasText: label }).first(),
+      this.page.locator('a', { hasText: label }).first(),
+    ];
+    for (const loc of candidates) {
+      if (await this.clickLocator(loc)) return true;
     }
     return false;
   }
@@ -95,7 +106,10 @@ class PlaywrightSession implements BrowserSession {
     try {
       if ((await loc.count()) === 0) return false;
       await loc.click({ timeout: 5000 });
-      await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+      // 클릭의 효과(모달 오픈/네비게이션/데이터 로드)가 렌더될 때까지 대기 — 안 그러면
+      // 직후 캡처가 변화 전 화면을 찍는다(예: 팝업 열리기 전 목록).
+      await this.page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+      await this.page.waitForTimeout(600);
       return true;
     } catch {
       return false;

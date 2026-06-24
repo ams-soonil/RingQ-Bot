@@ -3,6 +3,10 @@ FROM mcr.microsoft.com/playwright:v1.61.0-jammy
 
 WORKDIR /app
 
+# better-sqlite3 네이티브 빌드(prebuilt 없을 때 소스 컴파일) 폴백용 툴체인
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
 # pnpm (corepack)
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 

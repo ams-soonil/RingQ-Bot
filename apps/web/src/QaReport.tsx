@@ -43,23 +43,20 @@ function CaseCard({
       {open && (
         <div className="qa-card-body">
           {findings.length === 0 ? (
-            <div className="qa-row qa-row-pass">
+            <div className="qa-finding qa-finding-pass" style={{ borderLeftColor: '#16a34a' }}>
               <span className="qa-dot qa-dot-pass">✓</span>
-              <span>설계 디스크립션 충족 — 결함 없음</span>
+              <span className="qa-msg">설계 디스크립션 충족 — 결함 없음</span>
             </div>
           ) : (
             findings.map((f) => (
-              <div key={f.id} className="qa-row qa-row-fail">
-                <span className="qa-dot" style={{ background: SEV_COLOR[f.severity] ?? '#999' }}>
-                  ✕
-                </span>
-                <span className="qa-sev" style={{ color: SEV_COLOR[f.severity] ?? '#999' }}>
-                  {f.severity.toUpperCase()}
-                </span>
-                <span className="qa-cat">
-                  [{f.source}/{f.category}]
-                </span>
-                <span className="qa-msg">{f.message}</span>
+              <div key={f.id} className="qa-finding" style={{ borderLeftColor: SEV_COLOR[f.severity] ?? '#999' }}>
+                <div className="qa-finding-head">
+                  <span className="qa-sev-badge" style={{ background: SEV_COLOR[f.severity] ?? '#999' }}>
+                    {f.severity.toUpperCase()}
+                  </span>
+                  <span className="qa-cat">[{f.source}/{f.category}]</span>
+                </div>
+                <div className="qa-msg">{f.message}</div>
               </div>
             ))
           )}

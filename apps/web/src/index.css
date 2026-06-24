@@ -237,3 +237,22 @@ body {
 .qa-msg { color: var(--text); }
 .qa-shot { margin-top: 10px; }
 .qa-shot img { max-width: 100%; border: 1px solid var(--border); border-radius: 6px; margin-top: 6px; }
+
+/* 결함마다 개별 박스 */
+.qa-card-body { display: grid; gap: 10px; }
+.qa-finding {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 5px solid #999;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.qa-finding-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.qa-sev-badge {
+  color: #fff; font-weight: 800; font-size: 11px;
+  padding: 2px 8px; border-radius: 999px; letter-spacing: 0.03em;
+}
+.qa-finding .qa-cat { font-size: 12px; color: var(--muted); }
+.qa-finding .qa-msg { color: var(--text); font-size: 14px; line-height: 1.5; }
+.qa-finding-pass { display: flex; align-items: center; gap: 8px; }

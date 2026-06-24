@@ -1,10 +1,18 @@
 import { useRef, useState } from 'react';
 import type { ProgressEvent, Run } from '@ringq/shared';
 import { createRun } from './api.js';
-import { CaseReview } from './CaseReview.js';
-import { Captures } from './Captures.js';
-import { Findings } from './Findings.js';
-import { ReportView } from './Report.js';
+import { QaReport } from './QaReport.js';
+
+const PHASE_LABEL: Record<string, string> = {
+  queued: '대기',
+  'generating-cases': '케이스 생성',
+  'cases-confirmed': '케이스 확정',
+  running: '화면 캡처',
+  comparing: '비교',
+  reporting: '리포트',
+  done: '완료',
+  failed: '실패',
+};
 
 export function App() {
   const [figmaLink, setFigmaLink] = useState('');
@@ -15,8 +23,8 @@ export function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [awaitingReview, setAwaitingReview] = useState(false);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
   const esRef = useRef<EventSource | null>(null);
 
   async function onRun() {
@@ -24,8 +32,8 @@ export function App() {
     esRef.current = null;
     setError(null);
     setEvents([]);
-    setAwaitingReview(false);
     setDone(false);
+    setBusy(true);
     try {
       const created = await createRun({
         figmaLinks: [figmaLink],
@@ -40,21 +48,25 @@ export function App() {
       es.addEventListener('progress', (e) => {
         const ev = JSON.parse((e as MessageEvent).data) as ProgressEvent;
         setEvents((prev) => [...prev, ev]);
-        if (ev.phase === 'awaiting-review') setAwaitingReview(true);
         if (ev.phase === 'done') setDone(true);
         if (ev.phase === 'done' || ev.phase === 'failed') {
+          setBusy(false);
           es.close();
           esRef.current = null;
         }
       });
       es.onerror = () => {
+        setBusy(false);
         es.close();
         esRef.current = null;
       };
     } catch (err) {
       setError(err instanceof Error ? err.message : '실행 실패');
+      setBusy(false);
     }
   }
+
+  const lastPhase = events.length ? events[events.length - 1].phase : null;
 
   return (
     <>
@@ -69,7 +81,7 @@ export function App() {
             <h2>QA 실행</h2>
             <div className="field">
               <label>Figma 링크</label>
-              <input placeholder="https://figma.com/file/..." value={figmaLink} onChange={(e) => setFigmaLink(e.target.value)} />
+              <input placeholder="https://figma.com/design/..." value={figmaLink} onChange={(e) => setFigmaLink(e.target.value)} />
             </div>
             <div className="field">
               <label>대상 사이트 URL</label>
@@ -87,11 +99,25 @@ export function App() {
               <label>Git repo URL (선택)</label>
               <input placeholder="https://github.com/..." value={gitUrl} onChange={(e) => setGitUrl(e.target.value)} />
             </div>
-            <button className="btn-primary" onClick={onRun} disabled={!figmaLink || !siteUrl}>
-              QA 실행
+            <button className="btn-primary" onClick={onRun} disabled={!figmaLink || !siteUrl || busy}>
+              {busy ? '실행 중…' : 'QA 실행'}
             </button>
             {error && <p className="error">{error}</p>}
           </div>
+
+          {run && (
+            <div className="card">
+              <h3>진행 상황 {lastPhase && <span className="phase">· {PHASE_LABEL[lastPhase] ?? lastPhase}</span>}</h3>
+              <ol className="progress-list">
+                {events.map((ev, i) => (
+                  <li key={i}>
+                    <span className="phase">{PHASE_LABEL[ev.phase] ?? ev.phase}</span>
+                    {ev.message}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
         </aside>
 
         <main className="main">
@@ -100,41 +126,12 @@ export function App() {
               왼쪽에 Figma 링크와 사이트 URL을 입력하고 <strong>QA 실행</strong>을 눌러 시작하세요.
             </div>
           )}
-
-          {run && (
-            <div className="card">
-              <h2>진행 상황</h2>
-              <h3>{run.id}</h3>
-              <ol className="progress-list">
-                {events.map((ev, i) => (
-                  <li key={i}>
-                    <span className="phase">{ev.phase}</span>
-                    {ev.message}
-                  </li>
-                ))}
-              </ol>
+          {run && !done && (
+            <div className="card empty">
+              QA 실행 중… (진행 상황은 왼쪽에서 확인)
             </div>
           )}
-
-          {run && awaitingReview && (
-            <div className="card">
-              <CaseReview runId={run.id} onConfirmed={() => setAwaitingReview(false)} />
-            </div>
-          )}
-
-          {run && done && (
-            <>
-              <div className="card">
-                <ReportView runId={run.id} />
-              </div>
-              <div className="card">
-                <Findings runId={run.id} />
-              </div>
-              <div className="card">
-                <Captures runId={run.id} />
-              </div>
-            </>
-          )}
+          {run && done && <QaReport runId={run.id} />}
         </main>
       </div>
     </>

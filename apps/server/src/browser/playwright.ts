@@ -52,8 +52,47 @@ class PlaywrightSession implements BrowserSession {
   }
 
   async clickByText(text: string): Promise<boolean> {
+    // SPA 렌더 대기: 네비게이션 직후 버튼이 아직 없을 수 있어, 본문/버튼이 뜰 때까지 대기.
+    await this.page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
+    await this.page
+      .locator('button, [role=button]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 6000 })
+      .catch(() => {});
+
+    // 1) 직접 매칭: 입력 텍스트를 "포함하는" 클릭 가능한 요소.
+    if (await this.clickLocator(this.page.getByRole('button', { name: text }).first())) return true;
+    if (await this.clickLocator(this.page.getByText(text, { exact: false }).first())) return true;
+
+    // 2) 자연어 지시 대응: 입력이 문장이면 그대로는 안 맞는다. 페이지의 클릭 가능한
+    //    요소 라벨 중 "그 라벨이 입력 문장 안에 포함되는" 것을 찾아 클릭(공백 무시, 가장 긴 라벨 우선).
+    //    예: "...상품 추가 버튼을 클릭..." → 라벨 "상품 추가" 버튼을 매칭.
     try {
-      const loc = this.page.getByText(text, { exact: false }).first();
+      const labels: string[] = await this.page
+        // 네비 링크(a)는 제외하고 "버튼"만 후보로(자연어 지시는 보통 버튼 클릭).
+        .locator('button, [role=button], input[type=submit], input[type=button]')
+        .evaluateAll((els) =>
+          els
+            .map((e) => (e.textContent || (e as HTMLInputElement).value || e.getAttribute('aria-label') || '').trim())
+            .filter(Boolean),
+        );
+      const norm = (s: string) => s.replace(/\s+/g, '');
+      const t = norm(text);
+      const best = labels
+        .filter((l) => l.length >= 2 && t.includes(norm(l)))
+        .sort((a, b) => b.length - a.length)[0];
+      if (best) {
+        if (await this.clickLocator(this.page.getByRole('button', { name: best }).first())) return true;
+        if (await this.clickLocator(this.page.getByText(best, { exact: false }).first())) return true;
+      }
+    } catch {
+      /* fallthrough */
+    }
+    return false;
+  }
+
+  private async clickLocator(loc: import('playwright').Locator): Promise<boolean> {
+    try {
       if ((await loc.count()) === 0) return false;
       await loc.click({ timeout: 5000 });
       await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});

@@ -19,7 +19,6 @@ export function App() {
   const [siteUrl, setSiteUrl] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [gitUrl, setGitUrl] = useState('');
   const [entrySteps, setEntrySteps] = useState('');
   const [run, setRun] = useState<Run | null>(null);
   const [events, setEvents] = useState<ProgressEvent[]>([]);
@@ -43,7 +42,6 @@ export function App() {
       const created = await createRun({
         figmaLinks: [figmaLink],
         siteUrl,
-        gitUrl: gitUrl || undefined,
         username: username || undefined,
         password: password || undefined,
         entrySteps: steps.length ? steps : undefined,
@@ -108,10 +106,6 @@ export function App() {
                 value={entrySteps}
                 onChange={(e) => setEntrySteps(e.target.value)}
               />
-            </div>
-            <div className="field">
-              <label>Git repo URL (선택)</label>
-              <input placeholder="https://github.com/..." value={gitUrl} onChange={(e) => setGitUrl(e.target.value)} />
             </div>
             <button className="btn-primary" onClick={onRun} disabled={!figmaLink || !siteUrl || busy}>
               {busy ? '실행 중…' : 'QA 실행'}

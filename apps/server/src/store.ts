@@ -17,6 +17,7 @@ export interface Store {
   listFindings(runId: string): Finding[];
   saveReport(report: Report): void;
   getReport(runId: string): Report | undefined;
+  getCredentials(runId: string): { username: string; password: string } | undefined;
 }
 
 interface CaseRow {
@@ -187,6 +188,14 @@ export function createStore(dbPath: string): Store {
   `);
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS credentials (
+      run_id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      password TEXT NOT NULL
+    );
+  `);
+
+  db.exec(`
     CREATE TABLE IF NOT EXISTS reports (
       run_id TEXT PRIMARY KEY,
       total INTEGER NOT NULL,
@@ -231,6 +240,13 @@ export function createStore(dbPath: string): Store {
         status: 'active',
         created_at: createdAt,
       });
+      if (input.username && input.password) {
+        db.prepare(`INSERT INTO credentials (run_id, username, password) VALUES (?, ?, ?)`).run(
+          id,
+          input.username,
+          input.password,
+        );
+      }
       return this.getRun(id)!;
     },
     getRun(id) {
@@ -393,6 +409,12 @@ export function createStore(dbPath: string): Store {
     getReport(runId) {
       const row = db.prepare(`SELECT * FROM reports WHERE run_id = ?`).get(runId) as ReportRow | undefined;
       return row ? rowToReport(row) : undefined;
+    },
+    getCredentials(runId) {
+      const row = db.prepare(`SELECT username, password FROM credentials WHERE run_id = ?`).get(runId) as
+        | { username: string; password: string }
+        | undefined;
+      return row;
     },
   };
 }

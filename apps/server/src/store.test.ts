@@ -174,3 +174,17 @@ describe('store report', () => {
     expect(createStore(':memory:').getReport('nope')).toBeUndefined();
   });
 });
+
+describe('store credentials', () => {
+  it('createRun에 계정을 주면 getCredentials로 조회되고 Run엔 비번이 없다', () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com', username: 'u', password: 'p' });
+    expect(store.getCredentials(run.id)).toEqual({ username: 'u', password: 'p' });
+    expect((run as Record<string, unknown>).password).toBeUndefined();
+  });
+  it('계정 없이 생성하면 getCredentials undefined', () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com' });
+    expect(store.getCredentials(run.id)).toBeUndefined();
+  });
+});

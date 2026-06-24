@@ -1,0 +1,12 @@
+services:
+  ringq:
+    build: .
+    image: ringq-bot
+    ports:
+      - '4000:4000'
+    env_file:
+      - .env
+    volumes:
+      # sqlite DB + 스크린샷 영속화. 컨테이너 재생성해도 결과 유지.
+      - ./data:/app/apps/server/data
+    restart: unless-stopped

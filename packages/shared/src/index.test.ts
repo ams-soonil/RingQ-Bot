@@ -144,3 +144,17 @@ describe('ReportSchema', () => {
     expect(() => ReportSchema.parse({ runId: 'r1', total: 0, critical: 0, major: 0, minor: 0, verdict: 'maybe', generatedAt: 'x' })).toThrow();
   });
 });
+
+import { ProjectInputSchema as PIS } from './index.js';
+
+describe('ProjectInput 계정', () => {
+  it('username/password를 허용한다', () => {
+    const r = PIS.parse({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com', username: 'u', password: 'p' });
+    expect(r.username).toBe('u');
+    expect(r.password).toBe('p');
+  });
+  it('계정 없이도 통과한다', () => {
+    const r = PIS.parse({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com' });
+    expect(r.username).toBeUndefined();
+  });
+});

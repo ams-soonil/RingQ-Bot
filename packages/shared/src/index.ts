@@ -20,6 +20,8 @@ export const ProjectInputSchema = z.object({
   figmaLinks: z.array(z.string().url()).min(1),
   siteUrl: z.string().url(),
   gitUrl: z.string().url().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
 });
 export type ProjectInput = z.infer<typeof ProjectInputSchema>;
 

@@ -1,6 +1,12 @@
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { mkdirSync } from 'node:fs';
 import { buildApp } from './app.js';
+
+// .env는 레포 루트에 둔다(README 기준). 패키지 cwd(apps/server)에서 실행돼도 루트를 우선 로드.
+const rootEnv = fileURLToPath(new URL('../../../.env', import.meta.url));
+loadEnv(existsSync(rootEnv) ? { path: rootEnv } : {});
 import { createStore } from './store.js';
 import { createQueue } from './queue.js';
 import { createPipeline } from './pipeline.js';

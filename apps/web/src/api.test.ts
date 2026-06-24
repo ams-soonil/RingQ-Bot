@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createRun, fetchCases, confirmCases, fetchCaptures, fetchFindings } from './api.js';
+import { createRun, fetchCases, confirmCases, fetchCaptures, fetchFindings, fetchReport } from './api.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -88,5 +88,17 @@ describe('fetchFindings', () => {
   it('서버 실패 시 throw', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'x' }) }));
     await expect(fetchFindings('run_1')).rejects.toThrow();
+  });
+});
+
+describe('fetchReport', () => {
+  it('200이면 report 반환', async () => {
+    const rep = { runId: 'run_1', total: 0, critical: 0, major: 0, minor: 0, verdict: 'pass', generatedAt: 'now' };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => rep }));
+    expect((await fetchReport('run_1'))?.verdict).toBe('pass');
+  });
+  it('404면 null', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({ error: 'no report' }) }));
+    expect(await fetchReport('run_1')).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { createRun } from './api.js';
 import { CaseReview } from './CaseReview.js';
 import { Captures } from './Captures.js';
 import { Findings } from './Findings.js';
+import { ReportView } from './Report.js';
 
 export function App() {
   const [figmaLink, setFigmaLink] = useState('');
@@ -77,6 +78,7 @@ export function App() {
       {run && awaitingReview && (
         <CaseReview runId={run.id} onConfirmed={() => setAwaitingReview(false)} />
       )}
+      {run && done && <ReportView runId={run.id} />}
       {run && done && <Findings runId={run.id} />}
       {run && done && <Captures runId={run.id} />}
     </main>

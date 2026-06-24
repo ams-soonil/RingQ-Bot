@@ -1,4 +1,4 @@
-import type { ProjectInput, Run, TestCase, FlowStep, RunCapture, Finding } from '@ringq/shared';
+import type { ProjectInput, Run, TestCase, FlowStep, RunCapture, Finding, Report } from '@ringq/shared';
 
 export async function createRun(input: ProjectInput): Promise<Run> {
   const res = await fetch('/api/runs', {
@@ -61,4 +61,10 @@ export async function fetchCaptures(runId: string): Promise<RunCapture[]> {
 
 export async function fetchFindings(runId: string): Promise<Finding[]> {
   return jsonOrThrow(await fetch(`/api/runs/${runId}/findings`), 'fetchFindings');
+}
+
+export async function fetchReport(runId: string): Promise<Report | null> {
+  const res = await fetch(`/api/runs/${runId}/report`);
+  if (res.status === 404) return null;
+  return jsonOrThrow(res, 'fetchReport');
 }

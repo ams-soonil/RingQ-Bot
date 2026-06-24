@@ -12,7 +12,7 @@ pnpm dev               # server :4000 + web :5173 동시 구동
 
 브라우저에서 http://localhost:5173 접속 → Figma 링크 + 사이트 URL 입력 → "QA 실행".
 
-> **현재 상태(Plan 4):** Phase 1(Figma→케이스→검수/확정) + Phase 2(Playwright 캡처) + Phase 3(하이브리드 비교)가 동작합니다. 확정 후 runner가 화면을 캡처하면 comparator가 **구조 diff(텍스트/요소 누락·플로우 실패)** 와 **비전 LLM(Claude로 레이아웃/색/시각 비교)** 를 병합해 심각도(critical/major/minor)가 매겨진 결함 목록을 만들고, 대시보드의 "결함"에서 확인합니다. 리포트(reporting)는 아직 스텁이며 Plan 5에서 구현됩니다.
+> **현재 상태(Plan 5):** 전체 파이프라인이 완성됐습니다 — Phase 1(Figma→케이스→검수/확정) → Phase 2(Playwright 캡처) → Phase 3(하이브리드 비교: 구조 diff + 비전 LLM) → Phase 4(리포트). 비교가 끝나면 결함을 종합해 **QA 리포트**(심각도 집계 + 합격/불합격 verdict)를 만들고, 결함이 있으면 **경량 코드 수정 가이드(Claude, repo 접근 없음)** 를 베스트에포트로 덧붙입니다. 대시보드에서 "QA 리포트"(PASS/FAIL 배지·집계·수정 가이드) + "결함" + "캡처 결과"를 봅니다.
 >
 > 최초 1회 브라우저 설치 필요: `pnpm --filter @ringq/server exec playwright install chromium`
 

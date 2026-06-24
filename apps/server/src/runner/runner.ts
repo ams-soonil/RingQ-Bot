@@ -10,7 +10,6 @@ export interface Runner {
 
 interface RunnerOpts {
   artifactDir?: string;
-  creds?: { username?: string; password?: string };
 }
 
 export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts: RunnerOpts = {}): Runner {
@@ -64,8 +63,9 @@ export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts
       try {
         await session.goto(run.siteUrl);
 
-        if (opts.creds?.username && opts.creds?.password) {
-          const result = await session.tryLogin({ username: opts.creds.username, password: opts.creds.password });
+        const creds = store.getCredentials(runId);
+        if (creds?.username && creds?.password) {
+          const result = await session.tryLogin({ username: creds.username, password: creds.password });
           if (result === 'failed') throw new Error('로그인 실패: 자격증명 또는 폼 탐지 확인 필요');
         }
 

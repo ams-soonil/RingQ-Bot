@@ -9,9 +9,9 @@ import type { TestCase } from '@ringq/shared';
 
 const input = { figmaLinks: ['https://figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://example.com' };
 
-function seedConfirmed(): { store: ReturnType<typeof createStore>; runId: string } {
+function seedConfirmed(creds?: { username: string; password: string }): { store: ReturnType<typeof createStore>; runId: string } {
   const store = createStore(':memory:');
-  const run = store.createRun(input);
+  const run = store.createRun({ ...input, ...creds });
   const cases: TestCase[] = [
     { id: 'tc_ui', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: '로그인 UI', figmaNodeId: '1:2' },
     { id: 'tc_flow', runId: run.id, type: 'flow', source: 'figma', status: 'confirmed', title: '플로우', steps: [{ action: 'click', target: '로그인 버튼' }] },
@@ -46,11 +46,11 @@ describe('runner', () => {
     expect(caps.find((c) => c.caseId === 'tc_flow')!.flowOk).toBe(false);
   });
 
-  it('creds가 있고 로그인 실패면 throw한다', async () => {
-    const { store, runId } = seedConfirmed();
+  it('per-run creds가 있고 로그인 실패면 throw한다', async () => {
+    const { store, runId } = seedConfirmed({ username: 'u', password: 'p' });
     const dir = mkdtempSync(join(tmpdir(), 'ringq-'));
     const driver = createFakeDriver({ login: 'failed' });
-    const runner = createRunner({ store, driver }, { artifactDir: dir, creds: { username: 'u', password: 'p' } });
+    const runner = createRunner({ store, driver }, { artifactDir: dir });
 
     await expect(runner.run(runId)).rejects.toThrow(/로그인 실패/);
   });

@@ -30,10 +30,7 @@ const figma = createFigmaClient({ token: figmaToken });
 const llm = createAnthropicLLM({ apiKey: anthropicKey });
 const generator = createCaseGenerator(llm);
 const driver = createPlaywrightDriver({ headless: true });
-const runner = createRunner(
-  { store, driver },
-  { creds: { username: process.env.SITE_USERNAME, password: process.env.SITE_PASSWORD } },
-);
+const runner = createRunner({ store, driver });
 const vision = createAnthropicVision({ apiKey: anthropicKey });
 const comparator = createComparator({ store, figma, vision });
 const suggester = createAnthropicSuggester({ apiKey: anthropicKey });

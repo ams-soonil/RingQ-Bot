@@ -22,10 +22,10 @@ export function Findings({ runId }: { runId: string }) {
   return (
     <section style={{ marginTop: 24 }}>
       <h2>
-        결함 ({findings.length}) <button onClick={load}>새로고침</button>
+        이슈 ({findings.length}) <button onClick={load}>새로고침</button>
       </h2>
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {findings.length === 0 && !error && <p>결함 없음 ✅</p>}
+      {findings.length === 0 && !error && <p>이슈 없음 ✅</p>}
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {sorted.map((f) => (
           <li

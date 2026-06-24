@@ -55,7 +55,7 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
     emitProgress({ runId, phase: 'comparing', message: 'Figma ↔ 실제 화면 비교 중...', at: now() });
     const findings = await comparator.compare(runId);
     store.saveFindings(runId, findings);
-    emitProgress({ runId, phase: 'comparing', message: `결함 ${findings.length}건 발견`, at: now() });
+    emitProgress({ runId, phase: 'comparing', message: `이슈 ${findings.length}건 발견`, at: now() });
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
     // reporting (실제: 리포트 + 베스트에포트 수정 가이드)

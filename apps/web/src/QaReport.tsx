@@ -34,7 +34,7 @@ function CaseCard({
             [{tc.type}]{tc.figmaNodeId ? ` · ${tc.figmaNodeId}` : ''}
           </div>
           <div className="qa-card-meta">
-            결함 {findings.length} · {status === 'pass' ? '통과' : status === 'warn' ? '경미' : '실패'}
+            이슈 {findings.length} · {status === 'pass' ? '통과' : status === 'warn' ? '경미' : '실패'}
           </div>
         </div>
         <span className={`qa-donut qa-donut-${status}`} />
@@ -45,7 +45,7 @@ function CaseCard({
           {findings.length === 0 ? (
             <div className="qa-finding qa-finding-pass" style={{ borderLeftColor: '#16a34a' }}>
               <span className="qa-dot qa-dot-pass">✓</span>
-              <span className="qa-msg">설계 디스크립션 충족 — 결함 없음</span>
+              <span className="qa-msg">설계 디스크립션 충족 — 이슈 없음</span>
             </div>
           ) : (
             findings.map((f) => (

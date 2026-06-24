@@ -12,13 +12,15 @@ export type PartialFinding = Omit<Finding, 'id' | 'runId'>;
  */
 export function structuralCompare(tc: TestCase, cap: RunCapture): PartialFinding[] {
   if (cap.error) {
-    return [{ caseId: tc.id, category: 'capture-error', severity: 'critical', message: `캡처 실패: ${cap.error}`, source: 'structural' }];
+    // 검증 불가 → 이슈
+    return [{ caseId: tc.id, category: 'capture-error', severity: 'issue', message: `캡처 실패(검증 불가): ${cap.error}`, source: 'structural' }];
   }
 
   const findings: PartialFinding[] = [];
 
   if (tc.type === 'flow' && cap.flowOk === false) {
-    findings.push({ caseId: tc.id, category: 'flow-failed', severity: 'major', message: '플로우 일부 단계 실패', source: 'structural' });
+    // 기능 동작 실패 → 경고
+    findings.push({ caseId: tc.id, category: 'flow-failed', severity: 'warning', message: '플로우 일부 단계 실패', source: 'structural' });
   }
 
   return findings;

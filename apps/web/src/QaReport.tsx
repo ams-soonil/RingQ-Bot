@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
-import type { Finding, Report, RunCapture, TestCase } from '@ringq/shared';
+import type { Finding, Report, RunCapture, Severity, TestCase } from '@ringq/shared';
 import { fetchReport, fetchCases, fetchFindings, fetchCaptures } from './api.js';
 
-type CaseStatus = 'pass' | 'warn' | 'fail';
+const SEV: Record<Severity, { color: string; label: string; dot: string; emoji: string }> = {
+  success: { color: '#16a34a', label: '성공', dot: '✓', emoji: '🟢' },
+  improvement: { color: '#2563eb', label: '개선', dot: 'ℹ', emoji: '🔵' },
+  warning: { color: '#d97706', label: '경고', dot: '!', emoji: '🟡' },
+  issue: { color: '#b00020', label: '이슈', dot: '✕', emoji: '🔴' },
+};
+const RANK: Record<Severity, number> = { success: 0, improvement: 1, warning: 2, issue: 3 };
 
-function caseStatus(findings: Finding[]): CaseStatus {
-  if (findings.some((f) => f.severity === 'critical' || f.severity === 'major')) return 'fail';
-  if (findings.length > 0) return 'warn';
-  return 'pass';
+/** 화면 카드의 대표 상태 = 가장 높은 레벨(없으면 success). */
+function worst(findings: Finding[]): Severity {
+  let w: Severity = 'success';
+  for (const f of findings) if (RANK[f.severity] > RANK[w]) w = f.severity;
+  return w;
 }
-
-const SEV_COLOR: Record<string, string> = { critical: '#b00020', major: '#d97706', minor: '#6b7280' };
 
 function CaseCard({
   tc,
@@ -24,9 +29,9 @@ function CaseCard({
   runId: string;
 }) {
   const [open, setOpen] = useState(true);
-  const status = caseStatus(findings);
+  const status = worst(findings);
   return (
-    <article className={`qa-card qa-${status}`}>
+    <article className="qa-card">
       <header className="qa-card-head" onClick={() => setOpen((v) => !v)}>
         <div className="qa-card-title">
           <div className="qa-card-name">{tc.title}</div>
@@ -34,31 +39,35 @@ function CaseCard({
             [{tc.type}]{tc.figmaNodeId ? ` · ${tc.figmaNodeId}` : ''}
           </div>
           <div className="qa-card-meta">
-            이슈 {findings.length} · {status === 'pass' ? '통과' : status === 'warn' ? '경미' : '실패'}
+            {SEV.issue.emoji} {findings.filter((f) => f.severity === 'issue').length} ·{' '}
+            {SEV.warning.emoji} {findings.filter((f) => f.severity === 'warning').length} ·{' '}
+            {SEV.improvement.emoji} {findings.filter((f) => f.severity === 'improvement').length} ·{' '}
+            {SEV.success.emoji} {findings.filter((f) => f.severity === 'success').length}
           </div>
         </div>
-        <span className={`qa-donut qa-donut-${status}`} />
+        <span className="qa-donut" style={{ borderColor: SEV[status].color }} />
         <span className="qa-chevron">{open ? '▾' : '▸'}</span>
       </header>
       {open && (
         <div className="qa-card-body">
           {findings.length === 0 ? (
-            <div className="qa-finding qa-finding-pass" style={{ borderLeftColor: '#16a34a' }}>
-              <span className="qa-dot qa-dot-pass">✓</span>
-              <span className="qa-msg">설계 디스크립션 충족 — 이슈 없음</span>
+            <div className="qa-finding" style={{ borderLeftColor: '#94a3b8' }}>
+              <span className="qa-msg">검증 결과 없음 (이 화면에 해당하는 실제 화면을 찾지 못했을 수 있음)</span>
             </div>
           ) : (
-            findings.map((f) => (
-              <div key={f.id} className="qa-finding" style={{ borderLeftColor: SEV_COLOR[f.severity] ?? '#999' }}>
-                <div className="qa-finding-head">
-                  <span className="qa-sev-badge" style={{ background: SEV_COLOR[f.severity] ?? '#999' }}>
-                    {f.severity.toUpperCase()}
-                  </span>
-                  <span className="qa-cat">[{f.source}/{f.category}]</span>
+            [...findings]
+              .sort((a, b) => RANK[b.severity] - RANK[a.severity])
+              .map((f) => (
+                <div key={f.id} className="qa-finding" style={{ borderLeftColor: SEV[f.severity].color }}>
+                  <div className="qa-finding-head">
+                    <span className="qa-sev-badge" style={{ background: SEV[f.severity].color }}>
+                      {SEV[f.severity].emoji} {SEV[f.severity].label}
+                    </span>
+                    <span className="qa-cat">[{f.source}/{f.category}]</span>
+                  </div>
+                  <div className="qa-msg">{f.message}</div>
                 </div>
-                <div className="qa-msg">{f.message}</div>
-              </div>
-            ))
+              ))
           )}
           {capture?.screenshotPath && (
             <details className="qa-shot">
@@ -100,18 +109,26 @@ export function QaReport({ runId }: { runId: string }) {
   }
   const captureByCase = new Map(captures.map((c) => [c.caseId, c]));
   const confirmed = cases.filter((c) => c.status === 'confirmed');
-  const failed = confirmed.filter((c) => caseStatus(findingsByCase.get(c.id) ?? []) === 'fail').length;
-  const passed = confirmed.length - failed;
-  const allPass = failed === 0;
+  const count = (s: Severity) => findings.filter((f) => f.severity === s).length;
+  const allPass = report ? report.verdict === 'pass' : count('warning') + count('issue') === 0;
 
   return (
     <div className="qa-report">
       <div className={`qa-report-head ${allPass ? 'ok' : 'bad'}`}>
-        <div className="qa-report-title">QA 리포트 {report && <span className={`badge badge-${report.verdict === 'pass' ? 'pass' : 'fail'}`}>{report.verdict.toUpperCase()}</span>}</div>
+        <div className="qa-report-title">
+          QA 리포트
+          {report && (
+            <span className={`badge badge-${report.verdict === 'pass' ? 'pass' : 'fail'}`}>
+              {report.verdict === 'pass' ? 'PASS' : 'FAIL'}
+            </span>
+          )}
+        </div>
         <div className="qa-stats">
           <span className="qa-stat">📋 {confirmed.length} 화면</span>
-          <span className="qa-stat ok">✓ {passed}</span>
-          <span className="qa-stat bad">✕ {failed}</span>
+          <span className="qa-stat">{SEV.issue.emoji} {count('issue')}</span>
+          <span className="qa-stat">{SEV.warning.emoji} {count('warning')}</span>
+          <span className="qa-stat">{SEV.improvement.emoji} {count('improvement')}</span>
+          <span className="qa-stat">{SEV.success.emoji} {count('success')}</span>
           <button className="btn" onClick={load}>새로고침</button>
         </div>
       </div>

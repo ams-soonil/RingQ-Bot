@@ -95,7 +95,12 @@ export const RunCaptureSchema = z.object({
 });
 export type RunCapture = z.infer<typeof RunCaptureSchema>;
 
-export const SeveritySchema = z.enum(['critical', 'major', 'minor']);
+// 4단계 결과 레벨: 성공(🟢)/개선(🔵)/경고(🟡)/이슈(🔴)
+// - success: 기획서와 동일
+// - improvement: 기능 영향 없는 경미한 시각 차이(여백·색상·간격·폰트 등)
+// - warning: 기능 또는 가독성에 영향
+// - issue: 핵심 기능 누락, 화면 깨짐, 검증 불가
+export const SeveritySchema = z.enum(['success', 'improvement', 'warning', 'issue']);
 export type Severity = z.infer<typeof SeveritySchema>;
 
 export const FindingSourceSchema = z.enum(['structural', 'vision']);
@@ -118,9 +123,10 @@ export type Verdict = z.infer<typeof VerdictSchema>;
 export const ReportSchema = z.object({
   runId: z.string(),
   total: z.number(),
-  critical: z.number(),
-  major: z.number(),
-  minor: z.number(),
+  success: z.number(),
+  improvement: z.number(),
+  warning: z.number(),
+  issue: z.number(),
   verdict: VerdictSchema,
   generatedAt: z.string(),
   suggestion: z.string().optional(),

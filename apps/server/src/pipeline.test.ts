@@ -25,11 +25,11 @@ function makeDeps() {
   const generator = createCaseGenerator(createFakeLLM([]));
   const driver = createFakeDriver({ screen: { texts: ['홈'], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
-  // 디스크립션 기반 비교에서 major finding 1건을 내도록(리포트 fail + 가이드 생성 검증)
+  // 디스크립션 기반 비교에서 warning finding 1건을 내도록(리포트 fail + 가이드 생성 검증)
   const comparator = createComparator({
     store,
     figma: fakeFigma,
-    vision: createFakeVision([{ category: 'layout', severity: 'major', message: '레이아웃 차이' }]),
+    vision: createFakeVision([{ category: 'layout', severity: 'warning', message: '레이아웃 차이' }]),
   });
   const suggester = createFakeSuggester('가이드');
   return { store, generator, figma: fakeFigma, runner, comparator, suggester };
@@ -71,7 +71,7 @@ describe('pipeline resume 단계', () => {
     expect(deps.store.listCaptures(run.id).length).toBe(1);
     expect(deps.store.listFindings(run.id).length).toBeGreaterThan(0); // 기대 텍스트 누락 → 구조 finding
     const report = deps.store.getReport(run.id);
-    expect(report?.verdict).toBe('fail'); // major finding → fail
+    expect(report?.verdict).toBe('fail'); // warning finding → fail
     expect(report?.suggestion).toBe('가이드'); // findings>0 → 수정 가이드 부착
   });
 });

@@ -40,7 +40,7 @@ function seed() {
 describe('comparator', () => {
   it('구조 finding(flow-failed)과 디스크립션 기반 비전 finding을 병합하고 id를 부여한다', async () => {
     const { store, runId } = seed();
-    const vision = createFakeVision([{ category: 'layout', severity: 'minor', message: '여백 차이' }]);
+    const vision = createFakeVision([{ category: 'layout', severity: 'improvement', message: '여백 차이' }]);
     const comparator = createComparator({ store, figma: fakeFigma, vision });
 
     const findings = await comparator.compare(runId);
@@ -57,7 +57,7 @@ describe('comparator', () => {
   it('figma 재조회 실패 시 디스크립션 비교는 스킵하고 구조 결과만 반환', async () => {
     const { store, runId } = seed();
     const failingFigma: FigmaClient = { fetchExtract: async () => { throw new Error('figma down'); } };
-    const vision = createFakeVision([{ category: 'layout', severity: 'minor', message: 'x' }]);
+    const vision = createFakeVision([{ category: 'layout', severity: 'improvement', message: 'x' }]);
     const comparator = createComparator({ store, figma: failingFigma, vision });
 
     const findings = await comparator.compare(runId);

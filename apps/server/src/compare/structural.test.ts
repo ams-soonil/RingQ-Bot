@@ -19,17 +19,18 @@ describe('structuralCompare', () => {
     expect(f).toHaveLength(0);
   });
 
-  it('cap.error가 있으면 capture-error(critical) 하나만', () => {
+  it('cap.error가 있으면 capture-error(issue) 하나만', () => {
     const f = structuralCompare(uiCase, cap({ error: 'goto 실패' }));
     expect(f).toHaveLength(1);
     expect(f[0].category).toBe('capture-error');
-    expect(f[0].severity).toBe('critical');
+    expect(f[0].severity).toBe('issue');
   });
 
-  it('flow가 flowOk=false면 flow-failed(major)', () => {
+  it('flow가 flowOk=false면 flow-failed(warning)', () => {
     const flowCase: TestCase = { id: 'tc_2', runId: 'r1', type: 'flow', source: 'figma', status: 'confirmed', title: '플로우', steps: [{ action: 'click', target: 'x' }] };
     const f = structuralCompare(flowCase, { caseId: 'tc_2', runId: 'r1', type: 'flow', url: 'https://e.com', texts: [], elements: [], flowOk: false });
     expect(f).toHaveLength(1);
     expect(f[0].category).toBe('flow-failed');
+    expect(f[0].severity).toBe('warning');
   });
 });

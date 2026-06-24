@@ -132,8 +132,8 @@ describe('store captures', () => {
   });
 });
 
-const f1: Finding = { id: 'fd_1', runId: 'r1', caseId: 'tc_1', category: 'missing-text', severity: 'major', message: 'x', source: 'structural' };
-const f2: Finding = { id: 'fd_2', runId: 'r1', caseId: 'tc_1', category: 'layout', severity: 'minor', message: 'y', source: 'vision' };
+const f1: Finding = { id: 'fd_1', runId: 'r1', caseId: 'tc_1', category: 'missing-text', severity: 'warning', message: 'x', source: 'structural' };
+const f2: Finding = { id: 'fd_2', runId: 'r1', caseId: 'tc_1', category: 'layout', severity: 'improvement', message: 'y', source: 'vision' };
 
 describe('store findings', () => {
   it('saveFindings/listFindings 라운드트립', () => {
@@ -141,7 +141,7 @@ describe('store findings', () => {
     store.saveFindings('r1', [f1, f2]);
     const got = store.listFindings('r1');
     expect(got).toHaveLength(2);
-    expect(got[0].severity).toBe('major');
+    expect(got[0].severity).toBe('warning');
     expect(got[1].source).toBe('vision');
   });
 
@@ -154,7 +154,7 @@ describe('store findings', () => {
 });
 
 import type { Report } from '@ringq/shared';
-const rep: Report = { runId: 'r1', total: 2, critical: 0, major: 1, minor: 1, verdict: 'fail', generatedAt: 'now', suggestion: '가이드' };
+const rep: Report = { runId: 'r1', total: 2, success: 0, improvement: 1, warning: 1, issue: 0, verdict: 'fail', generatedAt: 'now', suggestion: '가이드' };
 
 describe('store report', () => {
   it('saveReport/getReport 라운드트립', () => {

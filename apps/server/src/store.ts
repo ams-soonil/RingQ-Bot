@@ -99,9 +99,10 @@ function rowToFinding(row: FindingRow): Finding {
 interface ReportRow {
   run_id: string;
   total: number;
-  critical: number;
-  major: number;
-  minor: number;
+  success: number;
+  improvement: number;
+  warning: number;
+  issue: number;
   verdict: string;
   generated_at: string;
   suggestion: string | null;
@@ -111,9 +112,10 @@ function rowToReport(row: ReportRow): Report {
   return {
     runId: row.run_id,
     total: row.total,
-    critical: row.critical,
-    major: row.major,
-    minor: row.minor,
+    success: row.success,
+    improvement: row.improvement,
+    warning: row.warning,
+    issue: row.issue,
     verdict: row.verdict as Report['verdict'],
     generatedAt: row.generated_at,
     suggestion: row.suggestion ?? undefined,
@@ -199,9 +201,10 @@ export function createStore(dbPath: string): Store {
     CREATE TABLE IF NOT EXISTS reports (
       run_id TEXT PRIMARY KEY,
       total INTEGER NOT NULL,
-      critical INTEGER NOT NULL,
-      major INTEGER NOT NULL,
-      minor INTEGER NOT NULL,
+      success INTEGER NOT NULL,
+      improvement INTEGER NOT NULL,
+      warning INTEGER NOT NULL,
+      issue INTEGER NOT NULL,
       verdict TEXT NOT NULL,
       generated_at TEXT NOT NULL,
       suggestion TEXT
@@ -390,17 +393,18 @@ export function createStore(dbPath: string): Store {
     },
     saveReport(report) {
       db.prepare(
-        `INSERT INTO reports (run_id, total, critical, major, minor, verdict, generated_at, suggestion)
-         VALUES (@run_id, @total, @critical, @major, @minor, @verdict, @generated_at, @suggestion)
+        `INSERT INTO reports (run_id, total, success, improvement, warning, issue, verdict, generated_at, suggestion)
+         VALUES (@run_id, @total, @success, @improvement, @warning, @issue, @verdict, @generated_at, @suggestion)
          ON CONFLICT(run_id) DO UPDATE SET
-           total=@total, critical=@critical, major=@major, minor=@minor,
+           total=@total, success=@success, improvement=@improvement, warning=@warning, issue=@issue,
            verdict=@verdict, generated_at=@generated_at, suggestion=@suggestion`,
       ).run({
         run_id: report.runId,
         total: report.total,
-        critical: report.critical,
-        major: report.major,
-        minor: report.minor,
+        success: report.success,
+        improvement: report.improvement,
+        warning: report.warning,
+        issue: report.issue,
         verdict: report.verdict,
         generated_at: report.generatedAt,
         suggestion: report.suggestion ?? null,

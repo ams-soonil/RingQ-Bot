@@ -50,7 +50,7 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
         if (!frame || !cap) continue; // 설계 디스크립션 또는 실제 캡처가 없으면 비교 불가
         const description = [frame.name, ...frame.texts].filter(Boolean).join('\n');
         try {
-          const vf = await vision.compare({
+          const input = {
             title: tc.title,
             description,
             figmaImageUrl: frame.imageUrl,
@@ -58,7 +58,10 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
             actualTexts: cap.texts,
             actualElements: cap.elements,
             expectation: tc.uiExpectation,
-          });
+          };
+          // LLM이 가끔 빈 결과를 주는 비결정성 대응: 비면 1회 재시도.
+          let vf = await vision.compare(input);
+          if (vf.length === 0) vf = await vision.compare(input);
           for (const f of vf)
             add({
               caseId: tc.id,

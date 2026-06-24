@@ -88,7 +88,9 @@ export function createAnthropicVision(opts: { apiKey: string; model?: string }):
 
       const res = await client.messages.create({
         model,
-        max_tokens: 2048,
+        // 항목별(성공 포함) 한국어 message+fix를 다 담으면 길어진다. 2048은 부족해
+        // tool_use JSON이 중간에 잘려 빈 객체로 반환되는 일이 있었다(stop_reason=max_tokens).
+        max_tokens: 8192,
         system: SYSTEM,
         tools: [EMIT_TOOL],
         tool_choice: { type: 'tool', name: 'emit_findings' },

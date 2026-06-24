@@ -80,7 +80,9 @@ interface FindingRow {
   case_id: string;
   category: string;
   severity: string;
+  title: string | null;
   message: string;
+  fix: string | null;
   source: string;
 }
 
@@ -91,7 +93,9 @@ function rowToFinding(row: FindingRow): Finding {
     caseId: row.case_id,
     category: row.category,
     severity: row.severity as Finding['severity'],
+    title: row.title ?? undefined,
     message: row.message,
+    fix: row.fix ?? undefined,
     source: row.source as Finding['source'],
   };
 }
@@ -184,7 +188,9 @@ export function createStore(dbPath: string): Store {
       case_id TEXT NOT NULL,
       category TEXT NOT NULL,
       severity TEXT NOT NULL,
+      title TEXT,
       message TEXT NOT NULL,
+      fix TEXT,
       source TEXT NOT NULL
     );
   `);
@@ -368,8 +374,8 @@ export function createStore(dbPath: string): Store {
     saveFindings(runId, findings) {
       const del = db.prepare(`DELETE FROM findings WHERE run_id = ?`);
       const ins = db.prepare(
-        `INSERT INTO findings (id, run_id, case_id, category, severity, message, source)
-         VALUES (@id, @run_id, @case_id, @category, @severity, @message, @source)`,
+        `INSERT INTO findings (id, run_id, case_id, category, severity, title, message, fix, source)
+         VALUES (@id, @run_id, @case_id, @category, @severity, @title, @message, @fix, @source)`,
       );
       const tx = db.transaction((rows: Finding[]) => {
         del.run(runId);
@@ -380,7 +386,9 @@ export function createStore(dbPath: string): Store {
             case_id: f.caseId,
             category: f.category,
             severity: f.severity,
+            title: f.title ?? null,
             message: f.message,
+            fix: f.fix ?? null,
             source: f.source,
           });
         }

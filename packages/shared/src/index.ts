@@ -112,7 +112,12 @@ export const FindingSchema = z.object({
   caseId: z.string(),
   category: z.string(),
   severity: SeveritySchema,
+  /** 디스크립션 항목 제목(예: "검색 필터"). 카드 타이틀에 표기. */
+  title: z.string().optional(),
+  /** 판정 상세(관련성·설명). 토글 상세 내용 또는 성공 시 인라인 텍스트. */
   message: z.string(),
+  /** 이슈/경고 시 관련 코드 수정 가이드(있으면 토글 안에 표기). */
+  fix: z.string().optional(),
   source: FindingSourceSchema,
 });
 export type Finding = z.infer<typeof FindingSchema>;

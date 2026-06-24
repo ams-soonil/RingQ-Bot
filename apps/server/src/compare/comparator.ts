@@ -20,8 +20,8 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
 
       const findings: Finding[] = [];
       let idx = 0;
-      const add = (caseId: string, category: string, severity: Finding['severity'], message: string, source: Finding['source']) => {
-        findings.push({ id: `fd_${runId}_${idx++}`, runId, caseId, category, severity, message, source });
+      const add = (f: Omit<Finding, 'id' | 'runId'>) => {
+        findings.push({ id: `fd_${runId}_${idx++}`, runId, ...f });
       };
 
       // 구조 비교(항상): 캡처 실패·플로우 실패 같은 확실한 사실만.
@@ -29,7 +29,7 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
         const cap = capByCase.get(tc.id);
         if (!cap) continue;
         for (const f of structuralCompare(tc, cap)) {
-          add(f.caseId, f.category, f.severity, f.message, 'structural');
+          add(f);
         }
       }
 
@@ -59,7 +59,16 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
             actualElements: cap.elements,
             expectation: tc.uiExpectation,
           });
-          for (const f of vf) add(tc.id, f.category, f.severity, f.message, 'vision');
+          for (const f of vf)
+            add({
+              caseId: tc.id,
+              category: f.category,
+              severity: f.severity,
+              title: f.title,
+              message: f.message,
+              fix: f.fix,
+              source: 'vision',
+            });
         } catch {
           // 케이스별 LLM 실패는 건너뜀(부분 결과 보존)
         }

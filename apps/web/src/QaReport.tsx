@@ -2,32 +2,56 @@ import { useEffect, useState } from 'react';
 import type { Finding, Report, RunCapture, Severity, TestCase } from '@ringq/shared';
 import { fetchReport, fetchCases, fetchFindings, fetchCaptures } from './api.js';
 
-const SEV: Record<Severity, { color: string; label: string; dot: string; emoji: string }> = {
-  success: { color: '#16a34a', label: '성공', dot: '✓', emoji: '🟢' },
-  improvement: { color: '#2563eb', label: '개선', dot: 'ℹ', emoji: '🔵' },
-  warning: { color: '#d97706', label: '경고', dot: '!', emoji: '🟡' },
-  issue: { color: '#b00020', label: '이슈', dot: '✕', emoji: '🔴' },
+const SEV: Record<Severity, { color: string; label: string; emoji: string }> = {
+  success: { color: '#16a34a', label: '성공', emoji: '🟢' },
+  improvement: { color: '#2563eb', label: '개선', emoji: '🔵' },
+  warning: { color: '#d97706', label: '경고', emoji: '🟡' },
+  issue: { color: '#b00020', label: '이슈', emoji: '🔴' },
 };
 const RANK: Record<Severity, number> = { success: 0, improvement: 1, warning: 2, issue: 3 };
 
-/** 화면 카드의 대표 상태 = 가장 높은 레벨(없으면 success). */
 function worst(findings: Finding[]): Severity {
   let w: Severity = 'success';
   for (const f of findings) if (RANK[f.severity] > RANK[w]) w = f.severity;
   return w;
 }
 
-function CaseCard({
-  tc,
-  findings,
-  capture,
-  runId,
-}: {
-  tc: TestCase;
-  findings: Finding[];
-  capture?: RunCapture;
-  runId: string;
-}) {
+/** 이슈별 큰 박스. 성공은 텍스트만, 그 외는 상세 토글(설명 + 코드 수정 가이드). */
+function FindingItem({ f }: { f: Finding }) {
+  const sev = SEV[f.severity];
+  const isSuccess = f.severity === 'success';
+  const [open, setOpen] = useState(f.severity === 'issue' || f.severity === 'warning');
+  return (
+    <article className="qa-finding" style={{ borderLeftColor: sev.color }}>
+      <div className="qa-finding-title" style={{ color: sev.color }}>
+        {sev.emoji} {f.title || f.category}
+        <span className="qa-finding-cat">[{f.source}/{f.category}]</span>
+      </div>
+      {isSuccess ? (
+        <div className="qa-msg">{f.message}</div>
+      ) : (
+        <>
+          <button className="qa-toggle" onClick={() => setOpen((v) => !v)}>
+            {open ? '▾' : '▸'} 상세 내용
+          </button>
+          {open && (
+            <div className="qa-detail">
+              <div className="qa-msg">{f.message}</div>
+              {f.fix && (
+                <div className="qa-fix">
+                  <div className="qa-fix-label">💡 코드 수정 가이드</div>
+                  <pre>{f.fix}</pre>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </article>
+  );
+}
+
+function CaseCard({ tc, findings, capture, runId }: { tc: TestCase; findings: Finding[]; capture?: RunCapture; runId: string }) {
   const [open, setOpen] = useState(true);
   const status = worst(findings);
   return (
@@ -39,10 +63,10 @@ function CaseCard({
             [{tc.type}]{tc.figmaNodeId ? ` · ${tc.figmaNodeId}` : ''}
           </div>
           <div className="qa-card-meta">
-            {SEV.issue.emoji} {findings.filter((f) => f.severity === 'issue').length} ·{' '}
-            {SEV.warning.emoji} {findings.filter((f) => f.severity === 'warning').length} ·{' '}
-            {SEV.improvement.emoji} {findings.filter((f) => f.severity === 'improvement').length} ·{' '}
-            {SEV.success.emoji} {findings.filter((f) => f.severity === 'success').length}
+            {SEV.issue.emoji} {findings.filter((f) => f.severity === 'issue').length} · {SEV.warning.emoji}{' '}
+            {findings.filter((f) => f.severity === 'warning').length} · {SEV.improvement.emoji}{' '}
+            {findings.filter((f) => f.severity === 'improvement').length} · {SEV.success.emoji}{' '}
+            {findings.filter((f) => f.severity === 'success').length}
           </div>
         </div>
         <span className="qa-donut" style={{ borderColor: SEV[status].color }} />
@@ -51,23 +75,13 @@ function CaseCard({
       {open && (
         <div className="qa-card-body">
           {findings.length === 0 ? (
-            <div className="qa-finding" style={{ borderLeftColor: '#94a3b8' }}>
-              <span className="qa-msg">검증 결과 없음 (이 화면에 해당하는 실제 화면을 찾지 못했을 수 있음)</span>
-            </div>
+            <article className="qa-finding" style={{ borderLeftColor: '#94a3b8' }}>
+              <div className="qa-msg">검증 결과 없음 (이 화면에 해당하는 실제 화면을 찾지 못했을 수 있음)</div>
+            </article>
           ) : (
             [...findings]
               .sort((a, b) => RANK[b.severity] - RANK[a.severity])
-              .map((f) => (
-                <div key={f.id} className="qa-finding" style={{ borderLeftColor: SEV[f.severity].color }}>
-                  <div className="qa-finding-head">
-                    <span className="qa-sev-badge" style={{ background: SEV[f.severity].color }}>
-                      {SEV[f.severity].emoji} {SEV[f.severity].label}
-                    </span>
-                    <span className="qa-cat">[{f.source}/{f.category}]</span>
-                  </div>
-                  <div className="qa-msg">{f.message}</div>
-                </div>
-              ))
+              .map((f) => <FindingItem key={f.id} f={f} />)
           )}
           {capture?.screenshotPath && (
             <details className="qa-shot">
@@ -135,22 +149,10 @@ export function QaReport({ runId }: { runId: string }) {
       <div className={`qa-report-bar ${allPass ? 'ok' : 'bad'}`} />
 
       {error && <p className="error">{error}</p>}
-      {report?.suggestion && (
-        <details className="card qa-guide" open>
-          <summary>💡 코드 수정 가이드</summary>
-          <pre>{report.suggestion}</pre>
-        </details>
-      )}
 
       <div className="qa-cards">
         {confirmed.map((tc) => (
-          <CaseCard
-            key={tc.id}
-            tc={tc}
-            findings={findingsByCase.get(tc.id) ?? []}
-            capture={captureByCase.get(tc.id)}
-            runId={runId}
-          />
+          <CaseCard key={tc.id} tc={tc} findings={findingsByCase.get(tc.id) ?? []} capture={captureByCase.get(tc.id)} runId={runId} />
         ))}
       </div>
     </div>

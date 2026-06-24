@@ -3,7 +3,11 @@ import type { Severity, UiExpectation } from '@ringq/shared';
 export interface VisionFinding {
   category: string;
   severity: Severity;
+  /** 디스크립션 항목 제목(예: "검색 필터"). */
+  title?: string;
   message: string;
+  /** 이슈/경고 시 관련 코드 수정 가이드. */
+  fix?: string;
 }
 
 export interface VisionInput {

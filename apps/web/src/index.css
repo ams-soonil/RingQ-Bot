@@ -256,3 +256,18 @@ body {
 .qa-finding .qa-cat { font-size: 12px; color: var(--muted); }
 .qa-finding .qa-msg { color: var(--text); font-size: 14px; line-height: 1.5; }
 .qa-finding-pass { display: flex; align-items: center; gap: 8px; }
+
+/* 이슈별 큰 박스 (타이틀 + 토글 상세 + 코드 가이드) */
+.qa-finding-title { font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.qa-finding-cat { font-size: 11px; color: var(--muted); font-weight: 600; }
+.qa-finding .qa-msg { margin-top: 8px; color: var(--text); font-size: 14px; line-height: 1.6; }
+.qa-toggle {
+  margin-top: 8px; background: #f1f5f9; border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 700;
+  color: #334155; cursor: pointer; width: 100%; text-align: left;
+}
+.qa-toggle:hover { background: #e2e8f0; }
+.qa-detail { margin-top: 8px; }
+.qa-fix { margin-top: 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 10px 12px; }
+.qa-fix-label { font-weight: 800; font-size: 13px; color: #b45309; margin-bottom: 6px; }
+.qa-fix pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; margin: 0; line-height: 1.55; }

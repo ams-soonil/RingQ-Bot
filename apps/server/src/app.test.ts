@@ -10,7 +10,6 @@ import { createRunner } from './runner/runner.js';
 import { createFakeDriver } from './browser/fake.js';
 import { createComparator } from './compare/comparator.js';
 import { createFakeVision } from './compare/vision-fake.js';
-import { createFakeSuggester } from './report/suggester-fake.js';
 
 const fakeExtract: FigmaExtract = {
   fileKey: 'A',
@@ -25,8 +24,7 @@ function setup() {
   const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
   const comparator = createComparator({ store, figma: fakeFigma, vision: createFakeVision([]) });
-  const suggester = createFakeSuggester('');
-  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator, runner, comparator, suggester }, { delayMs: 0 }));
+  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator, runner, comparator }, { delayMs: 0 }));
   const app = buildApp({ store, queue });
   return { store, queue, app };
 }

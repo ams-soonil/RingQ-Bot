@@ -22,6 +22,8 @@ export const ProjectInputSchema = z.object({
   gitUrl: z.string().url().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  /** 캡처 전 실행할 진입 단계(클릭 대상 텍스트 순서). 예: ["상품추가"] → 팝업 진입 후 캡처. */
+  entrySteps: z.array(z.string()).optional(),
 });
 export type ProjectInput = z.infer<typeof ProjectInputSchema>;
 
@@ -30,6 +32,7 @@ export const RunSchema = z.object({
   siteUrl: z.string(),
   figmaLinks: z.array(z.string()),
   gitUrl: z.string().optional(),
+  entrySteps: z.array(z.string()).optional(),
   phase: RunPhaseSchema,
   status: RunStatusSchema,
   createdAt: z.string(),

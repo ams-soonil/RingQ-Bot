@@ -131,6 +131,7 @@ interface Row {
   site_url: string;
   figma_links: string;
   git_url: string | null;
+  entry_steps: string | null;
   phase: string;
   status: string;
   created_at: string;
@@ -143,6 +144,7 @@ function rowToRun(row: Row): Run {
     siteUrl: row.site_url,
     figmaLinks: JSON.parse(row.figma_links) as string[],
     gitUrl: row.git_url ?? undefined,
+    entrySteps: row.entry_steps ? (JSON.parse(row.entry_steps) as string[]) : undefined,
     phase: row.phase as RunPhase,
     status: row.status as RunStatus,
     createdAt: row.created_at,
@@ -159,6 +161,7 @@ export function createStore(dbPath: string): Store {
       site_url TEXT NOT NULL,
       figma_links TEXT NOT NULL,
       git_url TEXT,
+      entry_steps TEXT,
       phase TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL
@@ -238,13 +241,14 @@ export function createStore(dbPath: string): Store {
       const id = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const createdAt = new Date().toISOString();
       db.prepare(
-        `INSERT INTO runs (id, site_url, figma_links, git_url, phase, status, created_at)
-         VALUES (@id, @site_url, @figma_links, @git_url, @phase, @status, @created_at)`,
+        `INSERT INTO runs (id, site_url, figma_links, git_url, entry_steps, phase, status, created_at)
+         VALUES (@id, @site_url, @figma_links, @git_url, @entry_steps, @phase, @status, @created_at)`,
       ).run({
         id,
         site_url: input.siteUrl,
         figma_links: JSON.stringify(input.figmaLinks),
         git_url: input.gitUrl ?? null,
+        entry_steps: input.entrySteps && input.entrySteps.length ? JSON.stringify(input.entrySteps) : null,
         phase: 'queued',
         status: 'active',
         created_at: createdAt,

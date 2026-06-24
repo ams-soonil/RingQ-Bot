@@ -18,7 +18,7 @@ export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts
 
   async function captureCase(
     session: BrowserSession,
-    run: { siteUrl: string },
+    run: { siteUrl: string; entrySteps?: string[] },
     runId: string,
     tc: TestCase,
   ): Promise<RunCapture> {
@@ -31,6 +31,10 @@ export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts
       // UI 케이스는 항상 대상 URL로 이동한 뒤 캡처한다. 로그인 리다이렉트나 직전
       // 케이스의 화면 이동으로 현재 페이지가 의도와 달라지는 것을 방지.
       await session.goto(url);
+      // 진입 단계: 캡처 전에 지정된 버튼들을 순서대로 클릭(예: 상품추가 → 팝업 진입).
+      for (const step of run.entrySteps ?? []) {
+        await session.clickByText(step);
+      }
       const screen = await session.capture(screenshotPath);
       return { caseId: tc.id, runId, type: 'ui', url, texts: screen.texts, elements: screen.elements, screenshotPath };
     }

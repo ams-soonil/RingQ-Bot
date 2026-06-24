@@ -188,3 +188,16 @@ describe('store credentials', () => {
     expect(store.getCredentials(run.id)).toBeUndefined();
   });
 });
+
+describe('store entrySteps', () => {
+  it('createRun에 entrySteps를 주면 getRun으로 복원된다', () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com', entrySteps: ['상품추가', '다음'] });
+    expect(store.getRun(run.id)?.entrySteps).toEqual(['상품추가', '다음']);
+  });
+  it('entrySteps 없으면 undefined', () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ figmaLinks: ['https://figma.com/file/x'], siteUrl: 'https://e.com' });
+    expect(store.getRun(run.id)?.entrySteps).toBeUndefined();
+  });
+});

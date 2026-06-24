@@ -94,3 +94,23 @@ describe('runner', () => {
     expect(calls[captureIdx - 1]).toBe('goto:https://example.com');
   });
 });
+
+describe('runner entrySteps', () => {
+  it('UI 캡처 전에 entrySteps 버튼을 클릭한다', async () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ ...input, entrySteps: ['상품추가'] });
+    store.saveCases(run.id, [
+      { id: 'tc_ui', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: 'UI', figmaNodeId: '1:2' },
+    ]);
+    const dir = mkdtempSync(join(tmpdir(), 'ringq-'));
+    const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
+    const runner = createRunner({ store, driver }, { artifactDir: dir });
+
+    await runner.run(run.id);
+
+    const calls = driver.sessions[0].calls;
+    const captureIdx = calls.findIndex((c) => c.startsWith('capture:'));
+    // 캡처 직전에 click:상품추가 가 있어야 한다
+    expect(calls.slice(0, captureIdx)).toContain('click:상품추가');
+  });
+});

@@ -20,6 +20,7 @@ export function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [gitUrl, setGitUrl] = useState('');
+  const [entrySteps, setEntrySteps] = useState('');
   const [run, setRun] = useState<Run | null>(null);
   const [events, setEvents] = useState<ProgressEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +36,17 @@ export function App() {
     setDone(false);
     setBusy(true);
     try {
+      const steps = entrySteps
+        .split(/[→,\n]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
       const created = await createRun({
         figmaLinks: [figmaLink],
         siteUrl,
         gitUrl: gitUrl || undefined,
         username: username || undefined,
         password: password || undefined,
+        entrySteps: steps.length ? steps : undefined,
       });
       setRun(created);
       const es = new EventSource(`/api/runs/${created.id}/events`);
@@ -94,6 +100,14 @@ export function App() {
             <div className="field">
               <label>사이트 비밀번호 (선택)</label>
               <input type="password" placeholder="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>진입 단계 (선택)</label>
+              <input
+                placeholder="예: 상품추가 → 다음 (클릭할 버튼, 캡처 전 실행)"
+                value={entrySteps}
+                onChange={(e) => setEntrySteps(e.target.value)}
+              />
             </div>
             <div className="field">
               <label>Git repo URL (선택)</label>

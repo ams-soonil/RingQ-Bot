@@ -9,6 +9,8 @@ import { ReportView } from './Report.js';
 export function App() {
   const [figmaLink, setFigmaLink] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [gitUrl, setGitUrl] = useState('');
   const [run, setRun] = useState<Run | null>(null);
   const [events, setEvents] = useState<ProgressEvent[]>([]);
@@ -29,6 +31,8 @@ export function App() {
         figmaLinks: [figmaLink],
         siteUrl,
         gitUrl: gitUrl || undefined,
+        username: username || undefined,
+        password: password || undefined,
       });
       setRun(created);
       const es = new EventSource(`/api/runs/${created.id}/events`);
@@ -53,34 +57,86 @@ export function App() {
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: '40px auto', fontFamily: 'system-ui' }}>
-      <h1>🤖 RingQ-Bot</h1>
-      <p>Figma 기획서를 정답지로 사이트를 자동 QA합니다.</p>
-      <div style={{ display: 'grid', gap: 8 }}>
-        <input placeholder="Figma 링크" value={figmaLink} onChange={(e) => setFigmaLink(e.target.value)} />
-        <input placeholder="대상 사이트 URL" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} />
-        <input placeholder="(선택) Git repo URL" value={gitUrl} onChange={(e) => setGitUrl(e.target.value)} />
-        <button onClick={onRun} disabled={!figmaLink || !siteUrl}>QA 실행</button>
+    <>
+      <header className="app-header">
+        <span className="brand">🤖 RingQ-Bot</span>
+        <span className="tagline">Figma 기획서를 정답지로 사이트를 자동 QA하는 대시보드</span>
+      </header>
+
+      <div className="layout">
+        <aside className="sidebar">
+          <div className="card">
+            <h2>QA 실행</h2>
+            <div className="field">
+              <label>Figma 링크</label>
+              <input placeholder="https://figma.com/file/..." value={figmaLink} onChange={(e) => setFigmaLink(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>대상 사이트 URL</label>
+              <input placeholder="https://example.com" value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>사이트 계정 ID (선택)</label>
+              <input placeholder="username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>사이트 비밀번호 (선택)</label>
+              <input type="password" placeholder="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Git repo URL (선택)</label>
+              <input placeholder="https://github.com/..." value={gitUrl} onChange={(e) => setGitUrl(e.target.value)} />
+            </div>
+            <button className="btn-primary" onClick={onRun} disabled={!figmaLink || !siteUrl}>
+              QA 실행
+            </button>
+            {error && <p className="error">{error}</p>}
+          </div>
+        </aside>
+
+        <main className="main">
+          {!run && (
+            <div className="card empty">
+              왼쪽에 Figma 링크와 사이트 URL을 입력하고 <strong>QA 실행</strong>을 눌러 시작하세요.
+            </div>
+          )}
+
+          {run && (
+            <div className="card">
+              <h2>진행 상황</h2>
+              <h3>{run.id}</h3>
+              <ol className="progress-list">
+                {events.map((ev, i) => (
+                  <li key={i}>
+                    <span className="phase">{ev.phase}</span>
+                    {ev.message}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {run && awaitingReview && (
+            <div className="card">
+              <CaseReview runId={run.id} onConfirmed={() => setAwaitingReview(false)} />
+            </div>
+          )}
+
+          {run && done && (
+            <>
+              <div className="card">
+                <ReportView runId={run.id} />
+              </div>
+              <div className="card">
+                <Findings runId={run.id} />
+              </div>
+              <div className="card">
+                <Captures runId={run.id} />
+              </div>
+            </>
+          )}
+        </main>
       </div>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      {run && (
-        <section style={{ marginTop: 24 }}>
-          <h2>진행 상황 · {run.id}</h2>
-          <ol>
-            {events.map((ev, i) => (
-              <li key={i}>
-                <strong>{ev.phase}</strong> — {ev.message}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-      {run && awaitingReview && (
-        <CaseReview runId={run.id} onConfirmed={() => setAwaitingReview(false)} />
-      )}
-      {run && done && <ReportView runId={run.id} />}
-      {run && done && <Findings runId={run.id} />}
-      {run && done && <Captures runId={run.id} />}
-    </main>
+    </>
   );
 }

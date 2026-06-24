@@ -11,11 +11,18 @@ export interface FakeSession extends BrowserSession {
   calls: string[];
 }
 
-export function createFakeDriver(script: FakeScript = {}): BrowserDriver {
+export interface FakeDriver extends BrowserDriver {
+  /** 지금까지 open()으로 만들어진 세션들(테스트에서 호출 시퀀스 검증용). */
+  sessions: FakeSession[];
+}
+
+export function createFakeDriver(script: FakeScript = {}): FakeDriver {
+  const sessions: FakeSession[] = [];
   return {
+    sessions,
     async open(): Promise<FakeSession> {
       const calls: string[] = [];
-      return {
+      const session: FakeSession = {
         calls,
         async goto(url) {
           calls.push(`goto:${url}`);
@@ -37,6 +44,8 @@ export function createFakeDriver(script: FakeScript = {}): BrowserDriver {
           calls.push('close');
         },
       };
+      sessions.push(session);
+      return session;
     },
   };
 }

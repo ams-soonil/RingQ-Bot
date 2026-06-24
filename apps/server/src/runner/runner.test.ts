@@ -65,4 +65,32 @@ describe('runner', () => {
     const caps = await runner.run(runId);
     expect(caps.length).toBe(2);
   });
+
+  it('로그인 성공 후 제공된 siteUrl로 다시 이동한다', async () => {
+    const { store, runId } = seedConfirmed({ username: 'u', password: 'p' });
+    const dir = mkdtempSync(join(tmpdir(), 'ringq-'));
+    const driver = createFakeDriver({ login: 'logged-in', screen: { texts: [], elements: [] } });
+    const runner = createRunner({ store, driver }, { artifactDir: dir });
+
+    await runner.run(runId);
+
+    const calls = driver.sessions[0].calls;
+    const loginIdx = calls.indexOf('tryLogin');
+    // tryLogin 직후 siteUrl로의 재이동(goto)이 있어야 한다
+    expect(calls[loginIdx + 1]).toBe('goto:https://example.com');
+  });
+
+  it('UI 케이스는 routePath 없이도 항상 siteUrl로 이동 후 캡처한다', async () => {
+    const { store, runId } = seedConfirmed();
+    const dir = mkdtempSync(join(tmpdir(), 'ringq-'));
+    const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
+    const runner = createRunner({ store, driver }, { artifactDir: dir });
+
+    await runner.run(runId);
+
+    const calls = driver.sessions[0].calls;
+    // tc_ui(UI) 캡처 직전에 goto:siteUrl 이 있어야 한다 (capture 앞 goto)
+    const captureIdx = calls.findIndex((c) => c.startsWith('capture:'));
+    expect(calls[captureIdx - 1]).toBe('goto:https://example.com');
+  });
 });

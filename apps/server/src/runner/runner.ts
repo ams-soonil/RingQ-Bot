@@ -28,7 +28,9 @@ export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts
 
     if (tc.type === 'ui') {
       const url = tc.routePath ? run.siteUrl + tc.routePath : run.siteUrl;
-      if (tc.routePath) await session.goto(url);
+      // UI 케이스는 항상 대상 URL로 이동한 뒤 캡처한다. 로그인 리다이렉트나 직전
+      // 케이스의 화면 이동으로 현재 페이지가 의도와 달라지는 것을 방지.
+      await session.goto(url);
       const screen = await session.capture(screenshotPath);
       return { caseId: tc.id, runId, type: 'ui', url, texts: screen.texts, elements: screen.elements, screenshotPath };
     }
@@ -67,6 +69,11 @@ export function createRunner(deps: { store: Store; driver: BrowserDriver }, opts
         if (creds?.username && creds?.password) {
           const result = await session.tryLogin({ username: creds.username, password: creds.password });
           if (result === 'failed') throw new Error('로그인 실패: 자격증명 또는 폼 탐지 확인 필요');
+          if (result === 'logged-in') {
+            // 로그인 과정에서 앱 기본 페이지로 리다이렉트되므로, 사용자가 제공한 원래
+            // siteUrl로 다시 이동해 의도한 화면에서 테스트한다.
+            await session.goto(run.siteUrl);
+          }
         }
 
         for (const tc of cases) {

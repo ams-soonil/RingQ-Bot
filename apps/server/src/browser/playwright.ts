@@ -64,6 +64,14 @@ class PlaywrightSession implements BrowserSession {
   }
 
   async capture(screenshotPath?: string): Promise<CapturedScreen> {
+    // SPA는 네비게이션 직후 본문이 비어 있다(렌더 전). 본문 텍스트가 생기거나
+    // 네트워크가 잦아들 때까지 조건 기반으로 대기한 뒤 캡처한다(빈 화면 캡처 방지).
+    await this.page
+      .waitForFunction(() => !!document.body && document.body.innerText.trim().length > 0, undefined, {
+        timeout: 8000,
+      })
+      .catch(() => {});
+    await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
     if (screenshotPath) {
       await this.page.screenshot({ path: screenshotPath, fullPage: true });
     }

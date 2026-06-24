@@ -250,3 +250,26 @@ describe('GET /api/runs/:id/report', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe('credentials 비노출 (보안 경계)', () => {
+  it('계정을 포함해 run을 만들어도 API 응답에 password가 없다', async () => {
+    const { app } = setup();
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/runs',
+      payload: {
+        figmaLinks: ['https://figma.com/file/abc'],
+        siteUrl: 'https://example.com',
+        username: 'u',
+        password: 'secret-pw',
+      },
+    });
+    expect(createRes.statusCode).toBe(201);
+    expect(JSON.stringify(createRes.json())).not.toContain('secret-pw');
+    const id = createRes.json().id;
+    const getRes = await app.inject({ method: 'GET', url: `/api/runs/${id}` });
+    expect(JSON.stringify(getRes.json())).not.toContain('secret-pw');
+    const listRes = await app.inject({ method: 'GET', url: '/api/runs' });
+    expect(JSON.stringify(listRes.json())).not.toContain('secret-pw');
+  });
+});

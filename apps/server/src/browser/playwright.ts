@@ -102,6 +102,87 @@ class PlaywrightSession implements BrowserSession {
     return false;
   }
 
+  async fill(label: string, value: string): Promise<boolean> {
+    await this.page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
+    const candidates = [
+      this.page.getByLabel(label, { exact: false }).first(),
+      this.page.getByPlaceholder(label).first(),
+      this.page.locator(`input[name*="${label}" i], input[id*="${label}" i]`).first(),
+    ];
+    for (const loc of candidates) {
+      try {
+        if ((await loc.count()) === 0) continue;
+        await loc.fill(value, { timeout: 5000 });
+        return true;
+      } catch {
+        /* try next */
+      }
+    }
+    return false;
+  }
+
+  async selectOption(label: string, value: string): Promise<boolean> {
+    await this.page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
+    // 1) 네이티브 <select>
+    try {
+      const sel = this.page.getByLabel(label, { exact: false }).first();
+      if ((await sel.count()) > 0 && (await sel.evaluate((e) => e.tagName)) === 'SELECT') {
+        await sel.selectOption({ label: value });
+        return true;
+      }
+    } catch {
+      /* fall through */
+    }
+    // 2) 커스텀 콤보박스: 트리거(라벨/placeholder/"~선택")를 클릭해 열고, 옵션(value) 텍스트 클릭.
+    let opened = false;
+    for (const loc of [
+      this.page.getByText(`${label}을 선택`, { exact: false }).first(),
+      this.page.getByText(`${label}를 선택`, { exact: false }).first(),
+      this.page.getByPlaceholder(label).first(),
+      this.page.getByText(label, { exact: false }).first(),
+    ]) {
+      try {
+        if ((await loc.count()) > 0) {
+          await loc.click({ timeout: 5000 });
+          opened = true;
+          break;
+        }
+      } catch {
+        /* try next */
+      }
+    }
+    if (!opened) return false;
+    await this.page.waitForTimeout(400);
+    try {
+      const opt = this.page.getByText(value, { exact: false }).first();
+      if ((await opt.count()) > 0) {
+        await opt.click({ timeout: 5000 });
+        await this.page.waitForTimeout(300);
+        return true;
+      }
+    } catch {
+      /* noop */
+    }
+    return false;
+  }
+
+  async check(target: string): Promise<boolean> {
+    await this.page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
+    const first = /^(firstrow|first|첫|첫행|첫\s*행)$/i.test(target.trim());
+    const loc = first
+      ? this.page.locator('input[type=checkbox], [role=checkbox]').first()
+      : this.page.getByRole('checkbox', { name: target }).first();
+    try {
+      if ((await loc.count()) === 0) return false;
+      await loc.check({ timeout: 5000 }).catch(async () => {
+        await loc.click({ timeout: 5000 });
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async clickLocator(loc: import('playwright').Locator): Promise<boolean> {
     try {
       if ((await loc.count()) === 0) return false;

@@ -114,3 +114,40 @@ describe('runner entrySteps', () => {
     expect(calls.slice(0, captureIdx)).toContain('click:상품추가');
   });
 });
+
+import { parseEntryStep } from './runner.js';
+
+describe('parseEntryStep', () => {
+  it('접두사 없으면 click', () => {
+    expect(parseEntryStep('상품추가')).toEqual({ verb: 'click', target: '상품추가' });
+  });
+  it('fill:label=value', () => {
+    expect(parseEntryStep('fill:연식=2020')).toEqual({ verb: 'fill', target: '연식', value: '2020' });
+  });
+  it('select:label=value', () => {
+    expect(parseEntryStep('select:제조사명=현대')).toEqual({ verb: 'select', target: '제조사명', value: '현대' });
+  });
+  it('check / next', () => {
+    expect(parseEntryStep('check:firstRow')).toEqual({ verb: 'check', target: 'firstRow' });
+    expect(parseEntryStep('다음')).toEqual({ verb: 'next', target: '다음' });
+  });
+});
+
+describe('runner 구조화 진입 스텝 실행', () => {
+  it('fill/select/click/next를 알맞은 세션 호출로 실행한다', async () => {
+    const store = createStore(':memory:');
+    const run = store.createRun({ ...input, entrySteps: ['상품추가', 'select:제조사명=현대', 'fill:연식=2020', '다음'] });
+    store.saveCases(run.id, [
+      { id: 'tc_ui', runId: run.id, type: 'ui', source: 'figma', status: 'confirmed', title: 'UI', figmaNodeId: '1:2' },
+    ]);
+    const dir = mkdtempSync(join(tmpdir(), 'ringq-'));
+    const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
+    const runner = createRunner({ store, driver }, { artifactDir: dir });
+    await runner.run(run.id);
+    const calls = driver.sessions[0].calls;
+    expect(calls).toContain('click:상품추가');
+    expect(calls).toContain('select:제조사명=현대');
+    expect(calls).toContain('fill:연식=2020');
+    expect(calls).toContain('click:다음'); // next → 다음 클릭
+  });
+});

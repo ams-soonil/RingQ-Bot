@@ -102,10 +102,13 @@ export function App() {
             <div className="field">
               <label>진입 단계 (선택)</label>
               <input
-                placeholder="예: 상품추가 → 다음 (클릭할 버튼, 캡처 전 실행)"
+                placeholder="예: 상품추가 → select:제조사명=현대 → fill:연식=2020 → 다음"
                 value={entrySteps}
                 onChange={(e) => setEntrySteps(e.target.value)}
               />
+              <small style={{ color: 'var(--muted)', fontSize: 11 }}>
+                → 로 구분. click(기본)·fill:라벨=값·select:라벨=값·check:firstRow·다음
+              </small>
             </div>
             <button className="btn-primary" onClick={onRun} disabled={!figmaLink || !siteUrl || busy}>
               {busy ? '실행 중…' : 'QA 실행'}

@@ -271,3 +271,8 @@ body {
 .qa-fix { margin-top: 10px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 10px 12px; }
 .qa-fix-label { font-weight: 800; font-size: 13px; color: #b45309; margin-bottom: 6px; }
 .qa-fix pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; margin: 0; line-height: 1.55; }
+
+/* 카드(그룹)와 내부 이슈 박스를 배경색으로 분리 */
+.qa-card { background: #ffffff; }
+.qa-card-body { background: #eef2f8; }           /* 그룹 본문: 옅은 슬레이트 톤 */
+.qa-finding { background: #ffffff; box-shadow: 0 1px 3px rgba(15,23,42,0.08); }  /* 이슈 박스: 흰색으로 부각 */

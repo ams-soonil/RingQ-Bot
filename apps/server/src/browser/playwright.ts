@@ -12,23 +12,39 @@ class PlaywrightSession implements BrowserSession {
   }
 
   async tryLogin(creds: { username: string; password: string }): Promise<LoginResult> {
-    const pw = this.page.locator('input[type=password]');
-    if ((await pw.count()) === 0) return 'no-form';
+    const pw = this.page.locator('input[type=password]').first();
+    // SPA는 domcontentloaded 이후에 로그인 폼을 렌더링하므로, 즉시 count()로 판단하면
+    // 폼을 놓친다(no-form 오판). 비밀번호 필드가 나타날 때까지 조건 기반으로 대기한다.
+    try {
+      await pw.waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      return 'no-form'; // 폼이 끝내 안 뜸 → 이미 로그인됐거나 로그인 폼 없음
+    }
     try {
       const user = this.page
-        .locator('input[type=email], input[type=text], input[name*=user i], input[name*=email i], input[name*=id i]')
+        .locator(
+          'input[type=email], input[type=text], input[name*=user i], input[name*=email i], input[name*=id i], input[name*=login i]',
+        )
         .first();
       // Decision-C: if no fillable username field exists, fill() throws and we
       // return 'failed' (caught below). Surfacing the failure is intentional —
       // silently skipping a partially-matched login form would hide real errors.
       await user.fill(creds.username);
-      await pw.first().fill(creds.password);
+      await pw.fill(creds.password);
       const btn = this.page
-        .locator('button[type=submit], input[type=submit], button:has-text("로그인"), button:has-text("Login")')
+        .locator(
+          'button[type=submit], input[type=submit], button:has-text("로그인"), button:has-text("로그인하기"), button:has-text("Login"), button:has-text("Sign in")',
+        )
         .first();
       if ((await btn.count()) > 0) await btn.click();
-      else await pw.first().press('Enter');
-      await this.page.waitForLoadState('domcontentloaded', { timeout: 15000 });
+      else await pw.press('Enter');
+      // 로그인 성공 시 SPA 전이로 비밀번호 필드가 사라진다. 사라질 때까지 대기(조건 기반).
+      // 실패(잘못된 자격증명)면 폼이 남아 타임아웃 → 'failed'로 판정.
+      await this.page
+        .locator('input[type=password]')
+        .first()
+        .waitFor({ state: 'detached', timeout: 15000 })
+        .catch(() => {});
       return (await this.page.locator('input[type=password]').count()) === 0 ? 'logged-in' : 'failed';
     } catch {
       return 'failed';

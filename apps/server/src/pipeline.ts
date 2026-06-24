@@ -3,7 +3,6 @@ import type { FigmaClient } from './figma/client.js';
 import type { CaseGenerator } from './cases/generator.js';
 import type { Runner } from './runner/runner.js';
 import type { Comparator } from './compare/comparator.js';
-import type { FixSuggester } from './report/suggester-types.js';
 import { buildReport } from './report/builder.js';
 import { emitProgress, now } from './events.js';
 
@@ -13,11 +12,10 @@ interface PipelineDeps {
   generator: CaseGenerator;
   runner: Runner;
   comparator: Comparator;
-  suggester: FixSuggester;
 }
 
 export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = {}) {
-  const { store, figma, generator, runner, comparator, suggester } = deps;
+  const { store, figma, generator, runner, comparator } = deps;
   const delayMs = opts.delayMs ?? 0;
 
   async function generate(runId: string): Promise<void> {
@@ -55,22 +53,14 @@ export function createPipeline(deps: PipelineDeps, opts: { delayMs?: number } = 
     emitProgress({ runId, phase: 'comparing', message: 'Figma ↔ 실제 화면 비교 중...', at: now() });
     const findings = await comparator.compare(runId);
     store.saveFindings(runId, findings);
-    emitProgress({ runId, phase: 'comparing', message: `결함 ${findings.length}건 발견`, at: now() });
+    emitProgress({ runId, phase: 'comparing', message: `이슈 ${findings.length}건 발견`, at: now() });
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
-    // reporting (실제: 리포트 + 베스트에포트 수정 가이드)
+    // reporting: 집계 + verdict. 코드 수정 가이드는 이슈별 finding.fix로 제공(리포트 레벨 가이드 제거).
     store.updateRun(runId, { phase: 'reporting' });
     emitProgress({ runId, phase: 'reporting', message: '리포트 작성 중...', at: now() });
     const reportFindings = store.listFindings(runId);
     const report = buildReport(runId, reportFindings, now());
-    if (reportFindings.length > 0) {
-      try {
-        const confirmedCases = store.listCases(runId).filter((c) => c.status === 'confirmed');
-        report.suggestion = await suggester.suggest(reportFindings, confirmedCases);
-      } catch {
-        // 수정 가이드 실패는 무시(리포트는 저장)
-      }
-    }
     store.saveReport(report);
     emitProgress({ runId, phase: 'reporting', message: `리포트 완료 — ${report.verdict.toUpperCase()}`, at: now() });
     if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));

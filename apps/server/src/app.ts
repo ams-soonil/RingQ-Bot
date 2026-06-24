@@ -1,6 +1,9 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
 import { z } from 'zod';
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { ProjectInputSchema, TestCaseSchema, FlowStepSchema } from '@ringq/shared';
 import type { Store } from './store.js';
 import type { JobQueue } from './queue.js';
@@ -144,6 +147,20 @@ export function buildApp(deps: { store: Store; queue: JobQueue }): FastifyInstan
     runEvents.on(req.params.id, onProgress);
     req.raw.on('close', () => runEvents.off(req.params.id, onProgress));
   });
+
+  // 프로덕션: 빌드된 프론트(apps/web/dist)를 같은 서버에서 서빙(단일 서비스).
+  // dist가 없으면(로컬 dev는 vite, 테스트는 빌드 안 함) 건너뛴다.
+  const webDist = fileURLToPath(new URL('../../web/dist', import.meta.url));
+  if (existsSync(webDist)) {
+    void app.register(fastifyStatic, { root: webDist });
+    // SPA: /api가 아닌 GET 요청은 index.html로 폴백.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.raw.method === 'GET' && !req.url.startsWith('/api')) {
+        return reply.type('text/html').send(readFileSync(join(webDist, 'index.html')));
+      }
+      return reply.code(404).send({ error: 'not found' });
+    });
+  }
 
   return app;
 }

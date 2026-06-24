@@ -80,7 +80,9 @@ interface FindingRow {
   case_id: string;
   category: string;
   severity: string;
+  title: string | null;
   message: string;
+  fix: string | null;
   source: string;
 }
 
@@ -91,7 +93,9 @@ function rowToFinding(row: FindingRow): Finding {
     caseId: row.case_id,
     category: row.category,
     severity: row.severity as Finding['severity'],
+    title: row.title ?? undefined,
     message: row.message,
+    fix: row.fix ?? undefined,
     source: row.source as Finding['source'],
   };
 }
@@ -99,9 +103,10 @@ function rowToFinding(row: FindingRow): Finding {
 interface ReportRow {
   run_id: string;
   total: number;
-  critical: number;
-  major: number;
-  minor: number;
+  success: number;
+  improvement: number;
+  warning: number;
+  issue: number;
   verdict: string;
   generated_at: string;
   suggestion: string | null;
@@ -111,9 +116,10 @@ function rowToReport(row: ReportRow): Report {
   return {
     runId: row.run_id,
     total: row.total,
-    critical: row.critical,
-    major: row.major,
-    minor: row.minor,
+    success: row.success,
+    improvement: row.improvement,
+    warning: row.warning,
+    issue: row.issue,
     verdict: row.verdict as Report['verdict'],
     generatedAt: row.generated_at,
     suggestion: row.suggestion ?? undefined,
@@ -125,6 +131,7 @@ interface Row {
   site_url: string;
   figma_links: string;
   git_url: string | null;
+  entry_steps: string | null;
   phase: string;
   status: string;
   created_at: string;
@@ -137,6 +144,7 @@ function rowToRun(row: Row): Run {
     siteUrl: row.site_url,
     figmaLinks: JSON.parse(row.figma_links) as string[],
     gitUrl: row.git_url ?? undefined,
+    entrySteps: row.entry_steps ? (JSON.parse(row.entry_steps) as string[]) : undefined,
     phase: row.phase as RunPhase,
     status: row.status as RunStatus,
     createdAt: row.created_at,
@@ -153,6 +161,7 @@ export function createStore(dbPath: string): Store {
       site_url TEXT NOT NULL,
       figma_links TEXT NOT NULL,
       git_url TEXT,
+      entry_steps TEXT,
       phase TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL
@@ -182,7 +191,9 @@ export function createStore(dbPath: string): Store {
       case_id TEXT NOT NULL,
       category TEXT NOT NULL,
       severity TEXT NOT NULL,
+      title TEXT,
       message TEXT NOT NULL,
+      fix TEXT,
       source TEXT NOT NULL
     );
   `);
@@ -199,9 +210,10 @@ export function createStore(dbPath: string): Store {
     CREATE TABLE IF NOT EXISTS reports (
       run_id TEXT PRIMARY KEY,
       total INTEGER NOT NULL,
-      critical INTEGER NOT NULL,
-      major INTEGER NOT NULL,
-      minor INTEGER NOT NULL,
+      success INTEGER NOT NULL,
+      improvement INTEGER NOT NULL,
+      warning INTEGER NOT NULL,
+      issue INTEGER NOT NULL,
       verdict TEXT NOT NULL,
       generated_at TEXT NOT NULL,
       suggestion TEXT
@@ -229,13 +241,14 @@ export function createStore(dbPath: string): Store {
       const id = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const createdAt = new Date().toISOString();
       db.prepare(
-        `INSERT INTO runs (id, site_url, figma_links, git_url, phase, status, created_at)
-         VALUES (@id, @site_url, @figma_links, @git_url, @phase, @status, @created_at)`,
+        `INSERT INTO runs (id, site_url, figma_links, git_url, entry_steps, phase, status, created_at)
+         VALUES (@id, @site_url, @figma_links, @git_url, @entry_steps, @phase, @status, @created_at)`,
       ).run({
         id,
         site_url: input.siteUrl,
         figma_links: JSON.stringify(input.figmaLinks),
         git_url: input.gitUrl ?? null,
+        entry_steps: input.entrySteps && input.entrySteps.length ? JSON.stringify(input.entrySteps) : null,
         phase: 'queued',
         status: 'active',
         created_at: createdAt,
@@ -365,8 +378,8 @@ export function createStore(dbPath: string): Store {
     saveFindings(runId, findings) {
       const del = db.prepare(`DELETE FROM findings WHERE run_id = ?`);
       const ins = db.prepare(
-        `INSERT INTO findings (id, run_id, case_id, category, severity, message, source)
-         VALUES (@id, @run_id, @case_id, @category, @severity, @message, @source)`,
+        `INSERT INTO findings (id, run_id, case_id, category, severity, title, message, fix, source)
+         VALUES (@id, @run_id, @case_id, @category, @severity, @title, @message, @fix, @source)`,
       );
       const tx = db.transaction((rows: Finding[]) => {
         del.run(runId);
@@ -377,7 +390,9 @@ export function createStore(dbPath: string): Store {
             case_id: f.caseId,
             category: f.category,
             severity: f.severity,
+            title: f.title ?? null,
             message: f.message,
+            fix: f.fix ?? null,
             source: f.source,
           });
         }
@@ -390,17 +405,18 @@ export function createStore(dbPath: string): Store {
     },
     saveReport(report) {
       db.prepare(
-        `INSERT INTO reports (run_id, total, critical, major, minor, verdict, generated_at, suggestion)
-         VALUES (@run_id, @total, @critical, @major, @minor, @verdict, @generated_at, @suggestion)
+        `INSERT INTO reports (run_id, total, success, improvement, warning, issue, verdict, generated_at, suggestion)
+         VALUES (@run_id, @total, @success, @improvement, @warning, @issue, @verdict, @generated_at, @suggestion)
          ON CONFLICT(run_id) DO UPDATE SET
-           total=@total, critical=@critical, major=@major, minor=@minor,
+           total=@total, success=@success, improvement=@improvement, warning=@warning, issue=@issue,
            verdict=@verdict, generated_at=@generated_at, suggestion=@suggestion`,
       ).run({
         run_id: report.runId,
         total: report.total,
-        critical: report.critical,
-        major: report.major,
-        minor: report.minor,
+        success: report.success,
+        improvement: report.improvement,
+        warning: report.warning,
+        issue: report.issue,
         verdict: report.verdict,
         generated_at: report.generatedAt,
         suggestion: report.suggestion ?? null,

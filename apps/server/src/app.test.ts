@@ -10,7 +10,6 @@ import { createRunner } from './runner/runner.js';
 import { createFakeDriver } from './browser/fake.js';
 import { createComparator } from './compare/comparator.js';
 import { createFakeVision } from './compare/vision-fake.js';
-import { createFakeSuggester } from './report/suggester-fake.js';
 
 const fakeExtract: FigmaExtract = {
   fileKey: 'A',
@@ -25,8 +24,7 @@ function setup() {
   const driver = createFakeDriver({ screen: { texts: [], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
   const comparator = createComparator({ store, figma: fakeFigma, vision: createFakeVision([]) });
-  const suggester = createFakeSuggester('');
-  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator, runner, comparator, suggester }, { delayMs: 0 }));
+  const queue = createQueue(createPipeline({ store, figma: fakeFigma, generator, runner, comparator }, { delayMs: 0 }));
   const app = buildApp({ store, queue });
   return { store, queue, app };
 }
@@ -210,7 +208,7 @@ describe('GET /api/runs/:id/findings', () => {
   it('run의 finding을 반환한다', async () => {
     const { app, store } = setup();
     const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
-    const fs: Finding[] = [{ id: 'fd_1', runId: run.id, caseId: 'tc_1', category: 'missing-text', severity: 'major', message: 'x', source: 'structural' }];
+    const fs: Finding[] = [{ id: 'fd_1', runId: run.id, caseId: 'tc_1', category: 'missing-text', severity: 'warning', message: 'x', source: 'structural' }];
     store.saveFindings(run.id, fs);
     const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/findings` });
     expect(res.statusCode).toBe(200);
@@ -230,7 +228,7 @@ describe('GET /api/runs/:id/report', () => {
   it('리포트가 있으면 200으로 반환한다', async () => {
     const { app, store } = setup();
     const run = store.createRun({ figmaLinks: ['https://www.figma.com/file/A/x?node-id=1-2'], siteUrl: 'https://e.com' });
-    const rep: Report = { runId: run.id, total: 1, critical: 0, major: 1, minor: 0, verdict: 'fail', generatedAt: 'now' };
+    const rep: Report = { runId: run.id, total: 1, success: 0, improvement: 0, warning: 1, issue: 0, verdict: 'fail', generatedAt: 'now' };
     store.saveReport(rep);
     const res = await app.inject({ method: 'GET', url: `/api/runs/${run.id}/report` });
     expect(res.statusCode).toBe(200);

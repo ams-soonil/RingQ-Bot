@@ -22,6 +22,8 @@ export const ProjectInputSchema = z.object({
   gitUrl: z.string().url().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  /** 캡처 전 실행할 진입 단계(클릭 대상 텍스트 순서). 예: ["상품추가"] → 팝업 진입 후 캡처. */
+  entrySteps: z.array(z.string()).optional(),
 });
 export type ProjectInput = z.infer<typeof ProjectInputSchema>;
 
@@ -30,6 +32,7 @@ export const RunSchema = z.object({
   siteUrl: z.string(),
   figmaLinks: z.array(z.string()),
   gitUrl: z.string().optional(),
+  entrySteps: z.array(z.string()).optional(),
   phase: RunPhaseSchema,
   status: RunStatusSchema,
   createdAt: z.string(),
@@ -95,7 +98,12 @@ export const RunCaptureSchema = z.object({
 });
 export type RunCapture = z.infer<typeof RunCaptureSchema>;
 
-export const SeveritySchema = z.enum(['critical', 'major', 'minor']);
+// 4단계 결과 레벨: 성공(🟢)/개선(🔵)/경고(🟡)/이슈(🔴)
+// - success: 기획서와 동일
+// - improvement: 기능 영향 없는 경미한 시각 차이(여백·색상·간격·폰트 등)
+// - warning: 기능 또는 가독성에 영향
+// - issue: 핵심 기능 누락, 화면 깨짐, 검증 불가
+export const SeveritySchema = z.enum(['success', 'improvement', 'warning', 'issue']);
 export type Severity = z.infer<typeof SeveritySchema>;
 
 export const FindingSourceSchema = z.enum(['structural', 'vision']);
@@ -107,7 +115,12 @@ export const FindingSchema = z.object({
   caseId: z.string(),
   category: z.string(),
   severity: SeveritySchema,
+  /** 디스크립션 항목 제목(예: "검색 필터"). 카드 타이틀에 표기. */
+  title: z.string().optional(),
+  /** 판정 상세(관련성·설명). 토글 상세 내용 또는 성공 시 인라인 텍스트. */
   message: z.string(),
+  /** 이슈/경고 시 관련 코드 수정 가이드(있으면 토글 안에 표기). */
+  fix: z.string().optional(),
   source: FindingSourceSchema,
 });
 export type Finding = z.infer<typeof FindingSchema>;
@@ -118,9 +131,10 @@ export type Verdict = z.infer<typeof VerdictSchema>;
 export const ReportSchema = z.object({
   runId: z.string(),
   total: z.number(),
-  critical: z.number(),
-  major: z.number(),
-  minor: z.number(),
+  success: z.number(),
+  improvement: z.number(),
+  warning: z.number(),
+  issue: z.number(),
   verdict: VerdictSchema,
   generatedAt: z.string(),
   suggestion: z.string().optional(),

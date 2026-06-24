@@ -17,7 +17,6 @@ import { createRunner } from './runner/runner.js';
 import { createPlaywrightDriver } from './browser/playwright.js';
 import { createComparator } from './compare/comparator.js';
 import { createAnthropicVision } from './compare/vision-anthropic.js';
-import { createAnthropicSuggester } from './report/suggester-anthropic.js';
 
 const figmaToken = process.env.FIGMA_TOKEN;
 const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -39,8 +38,7 @@ const driver = createPlaywrightDriver({ headless: true });
 const runner = createRunner({ store, driver });
 const vision = createAnthropicVision({ apiKey: anthropicKey });
 const comparator = createComparator({ store, figma, vision });
-const suggester = createAnthropicSuggester({ apiKey: anthropicKey });
-const queue = createQueue(createPipeline({ store, figma, generator, runner, comparator, suggester }, { delayMs: 300 }));
+const queue = createQueue(createPipeline({ store, figma, generator, runner, comparator }, { delayMs: 300 }));
 const app = buildApp({ store, queue });
 
 const port = Number(process.env.PORT ?? 4000);

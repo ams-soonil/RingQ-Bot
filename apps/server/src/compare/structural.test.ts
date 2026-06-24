@@ -13,36 +13,24 @@ function cap(partial: Partial<RunCapture>): RunCapture {
 }
 
 describe('structuralCompare', () => {
-  it('기대 텍스트/요소가 모두 있으면 finding 없음', () => {
-    const f = structuralCompare(uiCase, cap({ texts: ['로그인 화면', '비밀번호 입력'], elements: ['로그인 버튼'] }));
+  it('리터럴 텍스트/요소 매칭은 하지 않는다(노이즈 제거) — 누락이어도 finding 없음', () => {
+    // uiExpectation의 텍스트/요소가 화면에 없어도 structural은 더 이상 missing-* 를 내지 않는다.
+    const f = structuralCompare(uiCase, cap({ texts: [], elements: [] }));
     expect(f).toHaveLength(0);
   });
 
-  it('누락된 텍스트는 missing-text(major)', () => {
-    const f = structuralCompare(uiCase, cap({ texts: ['로그인 화면'], elements: ['로그인 버튼'] }));
-    expect(f).toHaveLength(1);
-    expect(f[0].category).toBe('missing-text');
-    expect(f[0].severity).toBe('major');
-    expect(f[0].source).toBe('structural');
-    expect(f[0].message).toContain('비밀번호');
-  });
-
-  it('누락된 요소는 missing-element(major)', () => {
-    const f = structuralCompare(uiCase, cap({ texts: ['로그인', '비밀번호'], elements: [] }));
-    expect(f.some((x) => x.category === 'missing-element')).toBe(true);
-  });
-
-  it('cap.error가 있으면 capture-error(critical) 하나만', () => {
+  it('cap.error가 있으면 capture-error(issue) 하나만', () => {
     const f = structuralCompare(uiCase, cap({ error: 'goto 실패' }));
     expect(f).toHaveLength(1);
     expect(f[0].category).toBe('capture-error');
-    expect(f[0].severity).toBe('critical');
+    expect(f[0].severity).toBe('issue');
   });
 
-  it('flow가 flowOk=false면 flow-failed(major)', () => {
+  it('flow가 flowOk=false면 flow-failed(warning)', () => {
     const flowCase: TestCase = { id: 'tc_2', runId: 'r1', type: 'flow', source: 'figma', status: 'confirmed', title: '플로우', steps: [{ action: 'click', target: 'x' }] };
     const f = structuralCompare(flowCase, { caseId: 'tc_2', runId: 'r1', type: 'flow', url: 'https://e.com', texts: [], elements: [], flowOk: false });
     expect(f).toHaveLength(1);
     expect(f[0].category).toBe('flow-failed');
+    expect(f[0].severity).toBe('warning');
   });
 });

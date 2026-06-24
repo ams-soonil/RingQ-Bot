@@ -36,6 +36,18 @@ export function createFakeDriver(script: FakeScript = {}): FakeDriver {
           calls.push(`click:${text}`);
           return script.clicks?.[text] ?? true;
         },
+        async fill(label, value) {
+          calls.push(`fill:${label}=${value}`);
+          return true;
+        },
+        async selectOption(label, value) {
+          calls.push(`select:${label}=${value}`);
+          return true;
+        },
+        async check(target) {
+          calls.push(`check:${target}`);
+          return true;
+        },
         async capture(screenshotPath) {
           calls.push(`capture:${screenshotPath ?? ''}`);
           return { ...(script.screen ?? { texts: [], elements: [] }), screenshotPath };

@@ -93,7 +93,7 @@ describe('fetchFindings', () => {
 
 describe('fetchReport', () => {
   it('200이면 report 반환', async () => {
-    const rep = { runId: 'run_1', total: 0, critical: 0, major: 0, minor: 0, verdict: 'pass', generatedAt: 'now' };
+    const rep = { runId: 'run_1', total: 0, success: 0, improvement: 0, warning: 0, issue: 0, verdict: 'pass', generatedAt: 'now' };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => rep }));
     expect((await fetchReport('run_1'))?.verdict).toBe('pass');
   });

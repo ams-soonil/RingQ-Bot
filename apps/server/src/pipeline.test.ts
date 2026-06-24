@@ -25,7 +25,12 @@ function makeDeps() {
   const generator = createCaseGenerator(createFakeLLM([]));
   const driver = createFakeDriver({ screen: { texts: ['홈'], elements: [] } });
   const runner = createRunner({ store, driver }, { artifactDir: 'data/test-runs' });
-  const comparator = createComparator({ store, figma: fakeFigma, vision: createFakeVision([]) });
+  // 디스크립션 기반 비교에서 major finding 1건을 내도록(리포트 fail + 가이드 생성 검증)
+  const comparator = createComparator({
+    store,
+    figma: fakeFigma,
+    vision: createFakeVision([{ category: 'layout', severity: 'major', message: '레이아웃 차이' }]),
+  });
   const suggester = createFakeSuggester('가이드');
   return { store, generator, figma: fakeFigma, runner, comparator, suggester };
 }

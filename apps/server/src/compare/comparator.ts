@@ -1,7 +1,6 @@
-import { existsSync } from 'node:fs';
 import type { Finding } from '@ringq/shared';
 import type { Store } from '../store.js';
-import type { FigmaClient } from '../figma/client.js';
+import type { FigmaClient, FigmaFrame } from '../figma/client.js';
 import type { VisionLLM } from './vision-types.js';
 import { structuralCompare } from './structural.js';
 
@@ -25,7 +24,7 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
         findings.push({ id: `fd_${runId}_${idx++}`, runId, caseId, category, severity, message, source });
       };
 
-      // structural (always)
+      // 구조 비교(항상): 캡처 실패·플로우 실패 같은 확실한 사실만.
       for (const tc of cases) {
         const cap = capByCase.get(tc.id);
         if (!cap) continue;
@@ -34,30 +33,35 @@ export function createComparator(deps: { store: Store; figma: FigmaClient; visio
         }
       }
 
-      // vision (best-effort): re-fetch figma for frame images
-      let imageByNode = new Map<string, string>();
+      // 디스크립션 기반 비교(메인, 베스트에포트): 설계 텍스트를 재조회해 각 화면의
+      // 디스크립션을 LLM에 주고, 실제 캡처(텍스트/요소+스크린샷)와 의미 단위로 비교.
+      let frameByNode = new Map<string, FigmaFrame>();
       try {
         const extract = await figma.fetchExtract(run.figmaLinks[0]);
-        imageByNode = new Map(extract.frames.filter((f) => f.imageUrl).map((f) => [f.nodeId, f.imageUrl!]));
+        frameByNode = new Map(extract.frames.map((f) => [f.nodeId, f]));
       } catch {
-        imageByNode = new Map(); // figma 실패 → 비전 스킵
+        frameByNode = new Map(); // figma 재조회 실패 → 디스크립션 비교 스킵(구조 결과만)
       }
 
       for (const tc of cases) {
         if (tc.type !== 'ui' || !tc.figmaNodeId) continue;
+        const frame = frameByNode.get(tc.figmaNodeId);
         const cap = capByCase.get(tc.id);
-        const figmaImageUrl = imageByNode.get(tc.figmaNodeId);
-        if (!cap?.screenshotPath || !existsSync(cap.screenshotPath) || !figmaImageUrl) continue;
+        if (!frame || !cap) continue; // 설계 디스크립션 또는 실제 캡처가 없으면 비교 불가
+        const description = [frame.name, ...frame.texts].filter(Boolean).join('\n');
         try {
           const vf = await vision.compare({
             title: tc.title,
-            figmaImageUrl,
+            description,
+            figmaImageUrl: frame.imageUrl,
             screenshotPath: cap.screenshotPath,
+            actualTexts: cap.texts,
+            actualElements: cap.elements,
             expectation: tc.uiExpectation,
           });
           for (const f of vf) add(tc.id, f.category, f.severity, f.message, 'vision');
         } catch {
-          // 케이스별 비전 실패는 건너뜀(부분 결과 보존)
+          // 케이스별 LLM 실패는 건너뜀(부분 결과 보존)
         }
       }
 

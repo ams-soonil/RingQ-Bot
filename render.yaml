@@ -6,8 +6,7 @@ services:
     name: ringq-bot
     runtime: docker
     dockerfilePath: ./Dockerfile
-    # 배포할 브랜치. PR을 main에 머지하면 main으로 바꾸세요.
-    branch: ams-soonil/ringq-bot-qa-automation
+    branch: main
     region: singapore # 한국에서 가장 가까운 리전
     plan: starter # 무료(512MB)는 크롬 구동에 부족 → Starter 이상 필요
     healthCheckPath: /api/runs

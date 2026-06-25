@@ -7,5 +7,8 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "dev": "pnpm --parallel -r dev"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3"]
   }
 }

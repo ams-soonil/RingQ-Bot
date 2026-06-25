@@ -1,0 +1,25 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# 사용법: Render 대시보드 > New > Blueprint > 이 레포 선택
+#  → ANTHROPIC_API_KEY / FIGMA_TOKEN 입력 > Apply → 공개 URL 발급
+services:
+  - type: web
+    name: ringq-bot
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    branch: main
+    region: singapore # 한국에서 가장 가까운 리전
+    plan: starter # 무료(512MB)는 크롬 구동에 부족 → Starter 이상 필요
+    healthCheckPath: /api/runs
+    autoDeploy: true # 위 branch에 푸시되면 자동 재배포
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false # 레포에 저장하지 않고 대시보드에서 직접 입력
+      - key: FIGMA_TOKEN
+        sync: false
+      - key: PORT
+        value: "4000"
+    disk:
+      # sqlite DB + 스크린샷 영속화(재배포해도 결과 유지). Starter+ 플랜 필요.
+      name: ringq-data
+      mountPath: /app/apps/server/data
+      sizeGB: 1
